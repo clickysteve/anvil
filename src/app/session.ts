@@ -349,6 +349,50 @@ export class Session {
     this.replaceFocused(n);
   }
 
+  /** Drag result: change pitch by dDeg degrees and move dMb microbeats in time (one edit). */
+  dragEvent(i: number, dDeg: number, dMb: number): void {
+    const t0 = this.focused;
+    const e = t0?.events[i];
+    if (!t0 || !e || e.rest || (!dDeg && !dMb)) return;
+    const lim = edit.moveLimits(t0, i);
+    const k = Math.max(lim.min, Math.min(lim.max, Math.round(dMb)));
+    let t = dDeg ? edit.setDegree(t0, i, e.degree + dDeg) : t0;
+    if (k) t = edit.moveNote(t, i, k);
+    if (t === t0) return;
+    // the moved note's index can change when rests are inserted or merged before it
+    const j = t.events.findIndex((x) => !x.rest && x.start === e.start + k);
+    this.selectedEvent = j >= 0 ? j : i;
+    this.replaceFocused(t);
+  }
+
+  resizeSelected(len: number): void {
+    const t = this.focused;
+    const i = this.selectedEvent;
+    if (!t || i === null || !t.events[i]) return;
+    this.replaceFocused(edit.resizeEvent(t, i, len));
+  }
+
+  /** Add a note into a rest at microbeat `at` (double-click in the theme view). */
+  addNoteAt(at: number, degree: number): void {
+    const t = this.focused;
+    if (!t) return;
+    const r = edit.addNote(t, at, degree);
+    if (r.index < 0) return;
+    this.selectedEvent = r.index;
+    this.replaceFocused(r.theme);
+  }
+
+  /** Delete the selected note (it becomes a rest). */
+  deleteSelected(): void {
+    const t = this.focused;
+    const i = this.selectedEvent;
+    if (!t || i === null || !t.events[i] || t.events[i].rest) return;
+    const n = edit.deleteNote(t, i);
+    if (n === t) return this.say('A theme needs at least one note.');
+    this.selectedEvent = n.events.findIndex((e) => e.start <= t.events[i].start && e.start + e.len > t.events[i].start);
+    this.replaceFocused(n);
+  }
+
   transposeFocused(delta: number): void {
     const t = this.focused;
     if (t) this.replaceFocused(edit.transposeTheme(t, delta));

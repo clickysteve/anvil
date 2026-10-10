@@ -119,6 +119,62 @@ test('generate, select, view and edit', async ({ page }) => {
   await expect(page.getByTestId('view-info')).not.toHaveText(t!);
 });
 
+test('theme view: drag notes, resize, scroll, zoom, delete, add, expand', async ({ page }) => {
+  const errs = watchErrors(page);
+  await open(page);
+  const theme = () => page.evaluate(() => {
+    const a = (window as unknown as { anvil: { focused: { events: { start: number; len: number; rest: boolean; degree: number }[]; length: number }; selectedEvent: number | null } }).anvil;
+    return { events: a.focused.events, length: a.focused.length, sel: a.selectedEvent };
+  });
+  const view = page.getByTestId('theme-view');
+  const notes = view.locator('rect.n');
+  // drag the first note up two rows
+  const before = await theme();
+  const first = notes.first();
+  const box = (await first.boundingBox())!;
+  const rh = box.height + 2;
+  await page.mouse.move(box.x + 3, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 3, box.y + box.height / 2 - 2 * rh, { steps: 5 });
+  await page.mouse.up();
+  let after = await theme();
+  expect(after.events[0].degree).toBe(before.events[0].degree + 2);
+  expect(after.length).toBe(before.length);
+  // delete with Backspace (the note becomes a rest; length unchanged)
+  await page.keyboard.press('Backspace');
+  after = await theme();
+  expect(after.events[0].rest).toBe(true);
+  expect(after.length).toBe(before.length);
+  // double-click the rest area in the grid to add a note back
+  const restCount = after.events.filter((e) => e.rest).length;
+  const b2 = (await view.boundingBox())!;
+  const cw = box.width + 2;
+  await page.mouse.dblclick(b2.x + 34 + cw / 2, b2.y + b2.height / 2);
+  after = await theme();
+  expect(after.events.filter((e) => e.rest).length).toBeLessThan(restCount + 1);
+  expect(after.events[0].rest).toBe(false);
+  // wheel scrolls (no page scroll, no error); ctrl+wheel zooms
+  await page.mouse.move(b2.x + b2.width / 2, b2.y + b2.height / 2);
+  const w0 = (await notes.nth(1).boundingBox())!.width;
+  await page.keyboard.down('Control');
+  await page.mouse.wheel(0, -200);
+  await page.keyboard.up('Control');
+  const w1 = (await notes.nth(1).boundingBox())!.width;
+  expect(w1).toBeGreaterThan(w0);
+  await page.mouse.wheel(0, 120);
+  await page.mouse.wheel(300, 0);
+  await page.getByTestId('ed-fit').click();
+  // expand
+  const h0 = (await view.boundingBox())!.height;
+  await page.getByTestId('expand').click();
+  await expect(page.getByTestId('expand')).toHaveAttribute('aria-pressed', 'true');
+  const h1 = (await view.boundingBox())!.height;
+  expect(h1).toBeGreaterThan(h0);
+  await expect(page.getByTestId('slot-TB')).toBeVisible();
+  await page.getByTestId('expand').click();
+  expect(errs).toEqual([]);
+});
+
 test('playback over simulated MIDI: start, pause, continue, stop with clock out', async ({ page }) => {
   const errs = watchErrors(page);
   await open(page);

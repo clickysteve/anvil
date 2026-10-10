@@ -18,6 +18,8 @@ export interface AppPrefs {
   previewVolume: number;
   tips: boolean;
   sideTab: string;
+  /** theme view takes the whole workspace width */
+  expanded: boolean;
 }
 
 export const defaultPrefs = (): AppPrefs => ({
@@ -32,6 +34,7 @@ export const defaultPrefs = (): AppPrefs => ({
   previewVolume: 0.5,
   tips: true,
   sideTab: 'midi',
+  expanded: false,
 });
 
 export interface PrefStore {
@@ -60,6 +63,7 @@ export function loadPrefs(store: PrefStore | null): AppPrefs {
       previewVolume: typeof o.previewVolume === 'number' ? Math.max(0, Math.min(1, o.previewVolume)) : d.previewVolume,
       tips: o.tips !== false,
       sideTab: typeof o.sideTab === 'string' ? o.sideTab : d.sideTab,
+      expanded: o.expanded === true,
     };
   } catch {
     return d;

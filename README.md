@@ -40,7 +40,10 @@ Projects remember their mode. Switching never changes the music.
    variation (rhythm var, pitch var, V).
 2. **Themes & variations**: click a slot to play it (generating it if empty); G, double-click
    or right-click regenerates. Variations are made from their row's theme.
-3. **Theme view**: see the structure (pulses, microrhythm cells, accents) and edit notes.
+3. **Theme view**: see the structure (pulses, microrhythm cells, accents) and edit notes:
+   drag notes for pitch and timing, drag a right edge for length, Backspace deletes,
+   double-click a rest to add a note; wheel and swipe to scroll, Ctrl/Cmd+wheel to zoom,
+   EXPAND for a full-width view.
 4. **Tonality**: scale, mode, key, octave, user scales, weight tables, drum table.
 5. **Accompaniment**: voices 2-6 take rhythm, divide and harmony from the theme.
 6. **Arranger**: a list of steps with durations; can be recorded live.

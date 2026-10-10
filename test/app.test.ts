@@ -295,3 +295,45 @@ describe('session', () => {
     expect(Object.keys(s.project.bank)).toHaveLength(20);
   });
 });
+
+describe('piano-roll edits', () => {
+  const base = { ...newProject(1).params, rest: 0 };
+  const t0 = generateTheme('TA', base, newProject(1).weights, 21);
+  const total = (x: typeof t0) => x.events.reduce((s, e) => s + e.len, 0);
+  const contiguous = (x: typeof t0) => x.events.every((e, i) => i === 0 || e.start === x.events[i - 1].start + x.events[i - 1].len);
+  it('moving a note keeps the length, never removes a note, and leaves a rest behind', () => {
+    // find a note followed by a longer event
+    const t = edit.changeLength(t0, 1, 2);
+    const notes = t.events.filter((e) => !e.rest).length;
+    const m = edit.moveNote(t, 0, 1);
+    expect(total(m)).toBe(total(t));
+    expect(contiguous(m)).toBe(true);
+    expect(m.events[0].rest).toBe(true);
+    expect(m.events.filter((e) => !e.rest).length).toBe(notes);
+    const back = edit.moveNote(m, 1, -1);
+    expect(back.events[0].rest).toBe(false);
+    expect(total(back)).toBe(total(t));
+    // limits: cannot move past a one-microbeat note
+    expect(edit.moveLimits(t0, 0)).toEqual({ min: 0, max: t0.events[1].len - 1 });
+  });
+  it('resizing takes time from the next event and gives it back as rest', () => {
+    const t = edit.changeLength(t0, 1, 3);
+    const r = edit.resizeEvent(t, 0, t.events[0].len + 2);
+    expect(total(r)).toBe(total(t));
+    expect(r.events[0].len).toBe(t.events[0].len + 2);
+    const s = edit.resizeEvent(r, 0, 1);
+    expect(total(s)).toBe(total(t));
+    expect(s.events[1].rest).toBe(true);
+  });
+  it('delete makes a rest; double-click adds a note into a rest', () => {
+    const d = edit.deleteNote(t0, 2);
+    expect(d.events.find((e) => e.start === t0.events[2].start)!.rest).toBe(true);
+    expect(total(d)).toBe(total(t0));
+    const restAt = d.events.find((e) => e.rest)!;
+    const a = edit.addNote(d, restAt.start, 40);
+    expect(a.index).toBeGreaterThanOrEqual(0);
+    expect(a.theme.events[a.index]).toMatchObject({ rest: false, degree: 40, start: restAt.start, len: 1 });
+    expect(total(a.theme)).toBe(total(t0));
+    expect(contiguous(a.theme)).toBe(true);
+  });
+});

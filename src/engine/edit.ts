@@ -76,3 +76,95 @@ export function transposeTheme(t: Theme, delta: number): Theme {
     `transposed ${delta > 0 ? '+' : ''}${delta}`,
   );
 }
+
+// ---------------------------------------------------------------------------------------------
+// Piano-roll style edits. The theme stays one gapless line of events, so these keep the total
+// length the same: a moved or resized note takes time from, or gives time to, its neighbours.
+// A neighbouring note is shortened but never removed; a neighbouring rest may be used up.
+
+const restEv = (len: number): ThemeEvent => ({ start: 0, len, rest: true, accent: -1, degree: -1 });
+
+function mergeRests(events: ThemeEvent[]): ThemeEvent[] {
+  const out: ThemeEvent[] = [];
+  for (const e of events) {
+    if (e.len <= 0) continue;
+    const last = out[out.length - 1];
+    if (last && last.rest && e.rest) last.len += e.len;
+    else out.push({ ...e });
+  }
+  return out;
+}
+
+/** How far event i can move (negative = earlier, positive = later), in microbeats. */
+export function moveLimits(t: Theme, i: number): { min: number; max: number } {
+  const prev = t.events[i - 1];
+  const next = t.events[i + 1];
+  const room = (e: ThemeEvent | undefined) => (!e ? 0 : e.rest ? e.len : e.len - 1);
+  return { min: -room(prev) || 0, max: room(next) };
+}
+
+/** Move note i by k microbeats in time. */
+export function moveNote(t: Theme, i: number, k: number): Theme {
+  const e = t.events[i];
+  if (!e || e.rest || !k) return t;
+  const lim = moveLimits(t, i);
+  k = Math.max(lim.min, Math.min(lim.max, Math.round(k)));
+  if (!k) return t;
+  const ev = t.events.map((x) => ({ ...x }));
+  const prev = ev[i - 1];
+  const next = ev[i + 1];
+  const before: ThemeEvent[] = ev.slice(0, Math.max(0, i - 1));
+  const after: ThemeEvent[] = ev.slice(i + 2);
+  let mid: ThemeEvent[];
+  if (k > 0) {
+    // the gap left behind becomes rest; the next event loses its start
+    next.len -= k;
+    if (prev) mid = prev.rest ? [{ ...prev, len: prev.len + k }, ev[i], next] : [prev, restEv(k), ev[i], next];
+    else mid = [restEv(k), ev[i], next];
+  } else {
+    const m = -k;
+    prev.len -= m;
+    const tail = next ? (next.rest ? [{ ...next, len: next.len + m }] : [restEv(m), next]) : [restEv(m)];
+    mid = [prev, ev[i], ...tail];
+  }
+  return edited(t, mergeRests([...before, ...mid, ...after]), `moved event ${i + 1} ${k > 0 ? 'later' : 'earlier'} by ${Math.abs(k)}`);
+}
+
+/** Set the length of event i; the following event absorbs the difference. */
+export function resizeEvent(t: Theme, i: number, len: number): Theme {
+  const e = t.events[i];
+  if (!e) return t;
+  const next = t.events[i + 1];
+  const maxGrow = !next ? 0 : next.rest ? next.len : next.len - 1;
+  const n = Math.max(1, Math.min(e.len + maxGrow, Math.round(len)));
+  const d = n - e.len;
+  if (!d) return t;
+  const ev = t.events.map((x) => ({ ...x }));
+  ev[i].len = n;
+  if (d > 0) ev[i + 1].len -= d;
+  else if (next && next.rest) ev[i + 1].len -= d;
+  else ev.splice(i + 1, 0, restEv(-d));
+  return edited(t, mergeRests(ev), `length of event ${i + 1}`);
+}
+
+/** Put a one-microbeat note into a rest at microbeat `at`. Returns the theme and the new index. */
+export function addNote(t: Theme, at: number, degree: number): { theme: Theme; index: number } {
+  const i = t.events.findIndex((e) => at >= e.start && at < e.start + e.len);
+  const e = t.events[i];
+  if (!e || !e.rest) return { theme: t, index: -1 };
+  const d = Math.max(0, Math.min(DEGREES - 1, Math.round(degree)));
+  const a = at - e.start;
+  const parts: ThemeEvent[] = [];
+  if (a > 0) parts.push(restEv(a));
+  parts.push({ start: 0, len: 1, rest: false, accent: 0, degree: d });
+  if (e.len - a - 1 > 0) parts.push(restEv(e.len - a - 1));
+  const ev = [...t.events.slice(0, i), ...parts, ...t.events.slice(i + 1)];
+  return { theme: edited(t, ev, `added a note at microbeat ${at + 1}`), index: i + (a > 0 ? 1 : 0) };
+}
+
+/** Delete note i (it becomes a rest; adjacent rests merge). Keeps at least one note. */
+export function deleteNote(t: Theme, i: number): Theme {
+  const e = t.events[i];
+  if (!e || e.rest) return t;
+  return toggleRest(t, i);
+}

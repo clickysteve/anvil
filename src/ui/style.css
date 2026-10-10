@@ -416,9 +416,6 @@ h3 {
 .actions.edit .lbl {
   font-family: var(--title);
 }
-.viewhead {
-  margin-top: 8px;
-}
 .vtitle {
   font-family: var(--title);
   font-size: 13px;
@@ -431,7 +428,64 @@ h3 {
 .rollwrap {
   border: 1px solid var(--ink);
   overflow: hidden;
-  height: 212px;
+  height: 260px;
+  min-height: 140px;
+  resize: vertical;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.roll .rowc {
+  fill: var(--ink);
+  fill-opacity: 0.05;
+}
+.roll .grid.row {
+  stroke-opacity: 0.1;
+}
+.roll .axis.c {
+  fill: var(--ink);
+}
+.roll .beyond {
+  fill: var(--dim);
+  fill-opacity: 0.12;
+}
+.roll .gutterline {
+  stroke: var(--ink);
+  stroke-opacity: 0.4;
+}
+.roll .n.dragging {
+  stroke: var(--selection);
+  stroke-width: 2;
+  stroke-dasharray: 3 2;
+}
+.viewhead {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+/* expanded theme view: the bank panel spans the workspace; the slot grid turns compact */
+.work.expanded {
+  grid-template-columns: minmax(250px, 300px) 1fr;
+}
+.work.expanded > .panel[data-area='bank'] {
+  grid-column: 1 / -1;
+  order: -1;
+}
+.work.expanded .slot {
+  min-height: 22px;
+}
+.work.expanded .slot .mini {
+  display: none;
+}
+.work.expanded .rollwrap {
+  height: max(420px, calc(100vh - 360px));
+}
+@media (max-width: 760px) {
+  .work.expanded {
+    grid-template-columns: 1fr;
+  }
 }
 .roll {
   display: block;

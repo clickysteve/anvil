@@ -13,6 +13,7 @@ import { helpDialog } from './help';
 import { ACC_RHYTHMS, ARTS, clocksLabel, degreeName, DIVIDES, HARMONIES, microbeatLabel, parseDegree, PITCH_VARS, RHYTHM_ALGS, RHYTHM_VARS } from './labels';
 import { applyPalette, contrastWarnings, PaletteLibrary, ROLE_INFO, ROLES, type Role } from './palette';
 import { drawTheme } from './themeView';
+import { RollView } from './roll';
 import { button, group, numField, panel, presetStrip, selectField, toggle } from './widgets';
 
 const STATE_TEXT = { stopped: 'STOPPED', running: 'RUNNING', paused: 'PAUSED', armed: 'ARMED' } as const;
@@ -256,20 +257,32 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
   );
 
   // ------------------------------------------------------------------ theme view
-  const viewSvg = svg('svg', { class: 'roll', role: 'img', 'aria-label': 'Theme view' });
-  const viewBox = h('div', { class: 'rollwrap', tabindex: 0, 'data-testid': 'theme-view', hint: 'Click a note to select it. Up/Down pitch (Shift: octave), A accent, R rest, [ ] length, Left/Right select' }, viewSvg);
+  const roll = new RollView(
+    {
+      select: (i) => s.selectEvent(i),
+      drag: (i, dDeg, dMb) => s.dragEvent(i, dDeg, dMb),
+      resize: (i, len) => {
+        s.selectEvent(i);
+        s.resizeSelected(len);
+      },
+      add: (at, deg) => s.addNoteAt(at, deg),
+    },
+    {
+      'data-testid': 'theme-view',
+      hint: 'Drag notes: up/down pitch, sideways time, right edge length. Wheel scrolls (Shift or swipe: time), Ctrl/Cmd+wheel zooms, drag empty space to pan, double-click a rest to add a note, Backspace deletes. Keys: arrows, A accent, R rest, [ ] length',
+    },
+  );
+  const viewBox = roll.wrap;
   const viewTitle = h('div', { class: 'vtitle', 'data-testid': 'view-title' });
   const viewInfo = h('div', { class: 'vinfo', 'data-testid': 'view-info' });
-  let xOf: (mb: number) => number = () => 0;
   let lastViewKey = '';
   const renderView = (force = false) => {
     const t = s.focused;
     const cmp = s.isExtended && s.compare ? p().bank[s.compare] ?? null : null;
-    const width = Math.max(320, viewBox.clientWidth || 640);
-    const key = JSON.stringify([s.focus, t?.events, t?.cells, s.selectedEvent, p().extended.locks[s.focus], cmp?.events, width, s.isExtended]);
+    const key = JSON.stringify([s.focus, t?.events, t?.cells, s.selectedEvent, p().extended.locks[s.focus], cmp?.events, s.isExtended]);
     if (!force && key === lastViewKey) return;
     lastViewKey = key;
-    xOf = drawTheme(viewSvg, t, { width, height: 210, selected: s.selectedEvent, locks: s.isExtended ? p().extended.locks[s.focus] : [], compare: cmp }).x;
+    roll.set(t, { key: `${s.focus}:${t?.seed}`, selected: s.selectedEvent, locks: s.isExtended ? p().extended.locks[s.focus] ?? [] : [], compare: cmp });
     viewTitle.textContent = `THEME VIEW  ${s.focus}${isVariation(s.focus) ? ` (variation of T${s.focus[1]})` : ''}${cmp ? `  compared with ${s.compare}` : ''}`;
     if (!t) viewInfo.textContent = 'Empty slot.';
     else {
@@ -280,12 +293,6 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
       viewInfo.textContent = `${notes} notes, ${t.events.length - notes} rests, ${t.length} microbeats of ${t.microbeat} clocks, pulse ${t.pulse}  ·  ${origin}${s.isExtended ? `  ·  seed ${t.seed}` : ''}${selText}`;
     }
   };
-  viewSvg.addEventListener('click', (e) => {
-    const tgt = e.target as Element;
-    const i = tgt.getAttribute('data-i');
-    s.selectEvent(i === null ? null : Number(i));
-    viewBox.focus();
-  });
   viewBox.addEventListener('keydown', (e) => {
     const t = s.focused;
     if (!t) return;
@@ -301,7 +308,11 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
     else if (k === 'r' || k === 'R') s.editEvent('rest');
     else if (k === ']') s.editEvent('longer');
     else if (k === '[') s.editEvent('shorter');
-    else if ((k === 'l' || k === 'L') && s.isExtended) s.toggleLock();
+    else if (k === 'Backspace' || k === 'Delete') s.deleteSelected();
+    else if (k === '0' || k === 'f' || k === 'F') {
+      roll.fit();
+      roll.render();
+    } else if ((k === 'l' || k === 'L') && s.isExtended) s.toggleLock();
     else handled = false;
     if (handled) {
       e.preventDefault();
@@ -322,8 +333,20 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
     button('+LEN', 'Lengthen the selected event by a microbeat (])', () => s.editEvent('longer')),
     button('TRANSP −', 'Transpose the whole item down a degree', () => s.transposeFocused(-1)),
     button('TRANSP +', 'Transpose the whole item up a degree', () => s.transposeFocused(1)),
+    button('DELETE', 'Delete the selected note: it becomes a rest (Backspace)', () => s.deleteSelected(), { 'data-testid': 'ed-delete' }),
+    button('FIT', 'Zoom to show the whole theme (F)', () => { roll.fit(); roll.render(); }, { 'data-testid': 'ed-fit' }),
   );
-  const bank = panel('bank', 'THEMES & VARIATIONS', grid, bankActions, h('div', { class: 'viewhead' }, viewTitle), viewBox, viewInfo, editBar);
+  const expandBtn = toggle({
+    label: '⤢ EXPAND',
+    hint: 'Give the theme view the whole width and more height (the slot grid becomes compact)',
+    get: () => s.prefs.expanded,
+    set: (v) => {
+      s.setPrefs({ expanded: v });
+      requestAnimationFrame(() => { roll.fit(); roll.render(); });
+    },
+    testid: 'expand',
+  });
+  const bank = panel('bank', 'THEMES & VARIATIONS', grid, bankActions, h('div', { class: 'viewhead' }, viewTitle, expandBtn), viewBox, viewInfo, editBar);
 
   // ------------------------------------------------------------------ tonality
   const userScaleBox = h('div', { class: 'userscale' });
@@ -772,6 +795,7 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
   );
   root.classList.add('anvil');
   bind(() => root.classList.toggle('extended', s.isExtended));
+  bind(() => root.querySelector('main.work')?.classList.toggle('expanded', s.prefs.expanded));
   bind(() => root.classList.toggle('no-tips', !s.prefs.tips));
 
   // ------------------------------------------------------------------ updates
@@ -794,23 +818,14 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
   renderLibrary();
   renderLook();
   renderAll();
-  new ResizeObserver(() => renderView(true)).observe(viewBox);
 
   // animation: playhead, transport position, monitor
   let lastItem: string | null = null;
   const frame = () => {
     const seq = s.seq;
-    const ph = viewSvg.querySelector('#playhead') as SVGLineElement | null;
-    const running = s.transport.state === 'running';
-    if (ph) {
-      if ((running || s.transport.state === 'paused') && seq.item === s.focus && seq.theme) {
-        const mb = Math.max(0, seq.offset) / seq.theme.microbeat;
-        const x = xOf(Math.min(seq.theme.length, mb));
-        ph.setAttribute('x1', String(x));
-        ph.setAttribute('x2', String(x));
-        ph.setAttribute('visibility', 'visible');
-      } else ph.setAttribute('visibility', 'hidden');
-    }
+    if ((s.transport.state === 'running' || s.transport.state === 'paused') && seq.item === s.focus && seq.theme) {
+      roll.playhead(Math.min(seq.theme.length, Math.max(0, seq.offset) / seq.theme.microbeat));
+    } else roll.playhead(null);
     updateTransport();
     if (seq.item !== lastItem) {
       lastItem = seq.item;
@@ -849,6 +864,9 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
       if (st === 'running') s.pause();
       else if (st === 'paused' || (st === 'armed' && s.transport.source === 'external')) s.cont();
       else if (st === 'stopped') s.start();
+    } else if ((e.key === 'Backspace' || e.key === 'Delete') && s.selectedEvent !== null) {
+      e.preventDefault();
+      s.deleteSelected();
     } else if (e.key === 'Escape') {
       e.preventDefault();
       if (e.shiftKey) s.panic();
