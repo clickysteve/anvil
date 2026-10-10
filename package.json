@@ -13,8 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
-    "verify": "npm run typecheck && npm test && npm run build:pages && npm run test:e2e"
+    "test:e2e": "npm run build:e2e && playwright test",
+    "verify": "npm run typecheck && npm test && npm run test:e2e && npm run build:pages",
+    "build:e2e": "vite build --base=/anvil/ --outDir dist-e2e/anvil --emptyOutDir && vite build --outDir dist-e2e/root --emptyOutDir"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

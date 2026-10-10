@@ -130,17 +130,38 @@ export class OutputRouter {
     if (port?.id === this.notePort?.id && port === this.notePort) return;
     this.allNotesOff(time);
     this.notePort = port;
+    if (port) this.portAvailable(port, time);
   }
 
   setClockPort(port: OutPort | null): void {
     this.clockPort = port;
   }
 
-  /** A port disappeared: forget its notes (nothing can be sent to it any more). */
+  /** Notes that were sounding on a port when it disappeared, by port id. */
+  private orphans = new Map<string, Sounding[]>();
+
+  /**
+   * A port disappeared. Its sounding notes are remembered: if the same device comes back
+   * (a USB glitch, a power cycle that kept a voice sounding), they are ended at once.
+   */
   portLost(id: string): void {
-    for (const [k, s] of this.sounding) if (s.port?.id === id) this.sounding.delete(k);
+    for (const [k, s] of this.sounding) {
+      if (s.port?.id !== id) continue;
+      this.sounding.delete(k);
+      const list = this.orphans.get(id) ?? [];
+      list.push(s);
+      this.orphans.set(id, list);
+    }
     if (this.notePort?.id === id) this.notePort = null;
     if (this.clockPort?.id === id) this.clockPort = null;
+  }
+
+  /** A port is available (again): end any notes it was left holding. */
+  portAvailable(port: OutPort, time = this.now()): void {
+    const list = this.orphans.get(port.id);
+    if (!list) return;
+    this.orphans.delete(port.id);
+    for (const s of list) this.emit(port, noteOff(s.ch, s.note), time);
   }
 
   /** Input traffic, so the monitor can show it. */

@@ -298,3 +298,19 @@ describe('external clock', () => {
     expect(unmatchedNotes(port.sent)).toBe(0);
   });
 });
+
+describe('device loss', () => {
+  it('notes left sounding on a lost port are ended when it reconnects', () => {
+    const time = new FakeTime();
+    const router = new OutputRouter(time.now);
+    const a = new FakePort('a');
+    router.setNotePort(a);
+    router.noteOn(1, 60, 100, time.t);
+    router.noteOn(2, 64, 100, time.t);
+    router.portLost('a');
+    expect(router.notePort).toBeNull();
+    expect(router.soundingCount).toBe(0);
+    router.setNotePort(a);
+    expect(unmatchedNotes(a.sent)).toBe(0);
+  });
+});
