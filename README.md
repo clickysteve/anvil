@@ -78,10 +78,10 @@ setup has **not** been verified on hardware by the developers.
 
 | Control | Key | Does |
 |---|---|---|
-| START | Space (stopped) | play from the beginning |
-| PAUSE | Space (running) | stop in place |
-| CONTINUE | Space (paused) | resume from where it paused |
-| STOP/RESET | Esc | stop and return to the beginning |
+| START | Space (when not playing), Return (when stopped) | play from the beginning |
+| PAUSE | Return (while playing) | stop in place |
+| CONTINUE | Return (while paused) | resume from where it paused |
+| STOP/RESET | Space (while playing), Esc | stop and return to the beginning |
 | ONCE | | play the theme once |
 | END | | stop at the end of the current theme |
 | PANIC | Shift+Esc | silence every note on every channel |

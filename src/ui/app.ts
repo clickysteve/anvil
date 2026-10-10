@@ -80,10 +80,10 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
   const transport = h(
     'section',
     { class: 'transport', 'data-area': 'transport', 'aria-label': 'Transport' },
-    tbtn('▶ START', 'Start from the beginning (Space when stopped)', () => s.start(), 'start'),
-    tbtn('❚❚ PAUSE', 'Pause in place (Space while running)', () => s.pause(), 'pause'),
-    tbtn('▶▶ CONTINUE', 'Continue from the paused position (Space while paused)', () => s.cont(), 'continue'),
-    tbtn('■ STOP/RESET', 'Stop and return to the beginning (Esc)', () => s.stop(), 'stop'),
+    tbtn('▶ START', 'Start from the beginning (Space)', () => s.start(), 'start'),
+    tbtn('❚❚ PAUSE', 'Pause in place (Return)', () => s.pause(), 'pause'),
+    tbtn('▶▶ CONTINUE', 'Continue from the paused position (Return)', () => s.cont(), 'continue'),
+    tbtn('■ STOP/RESET', 'Stop and return to the beginning (Space or Esc)', () => s.stop(), 'stop'),
     tbtn('ONCE', 'Play the theme once, then stop', () => s.playOnce(), 'once'),
     tbtn('END', 'Stop at the end of the current theme', () => s.stopAtEnd(), 'end'),
     stateBox,
@@ -822,11 +822,29 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
   requestAnimationFrame(frame);
 
   // ------------------------------------------------------------------ keyboard
+  // Clicking a button with the mouse does not move keyboard focus onto it, so Space and Return
+  // keep driving the transport after any click (Tab still focuses buttons for keyboard use).
+  document.addEventListener('mousedown', (e) => {
+    if (!(e.target as Element).closest('button')) return;
+    const a = document.activeElement as HTMLElement | null;
+    if (a && typing()) a.blur(); // commit a field being edited
+    else if (a && a.matches('button')) a.blur();
+    e.preventDefault();
+  });
   document.addEventListener('keydown', (e) => {
     if (help.open) return;
     if (typing() || (e.target as HTMLElement).tagName === 'SELECT') return;
     const st = s.transport.state;
     if (e.key === ' ') {
+      // Space: start / stop (stop returns to the beginning)
+      e.preventDefault();
+      if (st === 'running' || st === 'armed') s.stop();
+      else s.start();
+    } else if (e.key === 'Enter') {
+      // Return: pause / continue (starts when stopped). A button, menu or slot reached with the
+      // keyboard (Tab) keeps its own Return behaviour.
+      const a = document.activeElement as HTMLElement | null;
+      if (a && a !== document.body && a.matches('button, select, a, summary, [role="grid"] *')) return;
       e.preventDefault();
       if (st === 'running') s.pause();
       else if (st === 'paused' || (st === 'armed' && s.transport.source === 'external')) s.cont();

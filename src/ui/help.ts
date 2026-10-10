@@ -13,7 +13,7 @@ const SECTIONS: [string, string[]][] = [
     'Quick start',
     [
       '1. Choose a MIDI output in the MIDI tab (or switch on Audio preview).',
-      '2. Press START (Space). Theme TA loops.',
+      '2. Press START (Space). Theme TA loops. Space again stops; Return pauses and resumes.',
       '3. Click another slot to queue it; it starts at the end of the current theme. Shift-click switches at once.',
       '4. Press G, double-click or right-click a slot to generate a new theme or variation there, using the current constraints.',
       '5. Unmute voices 2-6 and choose their Rhythm, Divide and Harmony to build an accompaniment.',
@@ -65,7 +65,7 @@ const SECTIONS: [string, string[]][] = [
   [
     'Keyboard',
     [
-      'Space start / pause / continue - Esc stop and reset - Shift+Esc panic - G generate the viewed slot - arrows in the slot grid move, Enter plays - ? help.',
+      'Space start / stop - Return pause / continue (starts when stopped) - Esc stop and reset - Shift+Esc panic - G generate the viewed slot - arrows in the slot grid move, Return on a slot plays it - ? help.',
     ],
   ],
   [

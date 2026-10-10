@@ -275,15 +275,39 @@ test('MIDI monitor shows messages without clock flooding', async ({ page }) => {
   await expect(page.getByTestId('clock-summary')).toContainText(/Clock out: \d{2,}/);
 });
 
-test('keyboard: Space starts and pauses, Esc stops, ? opens help', async ({ page }) => {
+test('keyboard: Space starts/stops, Return pauses/continues, Esc stops, ? opens help', async ({ page }) => {
   await open(page);
+  const pos = () => page.evaluate(() => (window as unknown as { anvil: { seq: { tick: number } } }).anvil.seq.tick);
   await page.locator('body').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('Space');
   await expect(page.getByTestId('transport-state')).toHaveText('RUNNING');
   await page.keyboard.press('Space');
-  await expect(page.getByTestId('transport-state')).toHaveText('PAUSED');
-  await page.keyboard.press('Space');
+  await expect(page.getByTestId('transport-state')).toHaveText('STOPPED');
+  expect(await pos()).toBe(0);
+  await page.keyboard.press('Enter');
   await expect(page.getByTestId('transport-state')).toHaveText('RUNNING');
+  await page.waitForTimeout(300);
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('transport-state')).toHaveText('PAUSED');
+  const paused = await pos();
+  expect(paused).toBeGreaterThan(0);
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('transport-state')).toHaveText('RUNNING');
+  expect(await pos()).toBeGreaterThanOrEqual(paused);
+  await page.keyboard.press('Space');
+  await expect(page.getByTestId('transport-state')).toHaveText('STOPPED');
+  // after clicking START with the mouse, Return pauses (it does not press START again)
+  await page.getByTestId('start').click();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('transport-state')).toHaveText('PAUSED');
+  await page.getByTestId('stop').click();
+  // Return on a keyboard-focused slot still selects the slot, not the transport
+  await page.getByTestId('slot-TA').focus();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('transport-state')).toHaveText('STOPPED');
+  await page.keyboard.press('Space');
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('transport-state')).toHaveText('STOPPED');
   await page.keyboard.press('?');
