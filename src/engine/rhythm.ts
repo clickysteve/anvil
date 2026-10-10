@@ -62,7 +62,8 @@ function isSecondOrder(alg: number): boolean {
   return alg === 1 || alg === 2;
 }
 
-function drawAccent(alg: number, onPulse: boolean, rng: Rng): Accent {
+/** One accent level for an onset, with the algorithm's on/off-pulse odds. */
+export function drawAccent(alg: number, onPulse: boolean, rng: Rng): Accent {
   const t = ACCENT_ODDS[alg] ?? ACCENT_ODDS[1];
   const i = rng.weighted(onPulse ? t.on : t.off);
   return i === 0 ? 1 : i === 1 ? 0 : -1;

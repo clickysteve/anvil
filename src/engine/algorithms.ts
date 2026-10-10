@@ -129,6 +129,18 @@ export const ALGORITHMS: AlgorithmInfo[] = [
     evidence: 'INF',
     summary: 'Feel (off by default): accented/de-accented velocities move toward the base by 0-3 x floor(|Accent|/8).',
   },
+  {
+    id: 'extended.regenerate.v1',
+    role: 'extRegenerate',
+    evidence: 'INF',
+    summary: 'Extended: selective regeneration of rhythm, pitches, accents or a range, with motif locks and optional contour preservation.',
+  },
+  {
+    id: 'extended.mutate.v1',
+    role: 'extMutate',
+    evidence: 'INF',
+    summary: 'Extended: mutate a chosen proportion of pitches and microrhythms.',
+  },
 ];
 
 export const CURRENT_ALGORITHMS: Record<string, string> = (() => {
