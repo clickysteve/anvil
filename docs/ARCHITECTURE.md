@@ -66,10 +66,16 @@ timestamp, so jitter in the timer does not reach the output. A tempo change appl
 next unscheduled clock. If the page is throttled and the timer falls more than 200 ms
 behind, the clock resynchronises instead of bursting a backlog.
 
-On PAUSE, clocks already scheduled ahead of "now" have not been heard: ANVIL clears what the
-output can still cancel (`MIDIOutput.clear()` where available), ends notes, and moves the
-sequencer position back to the last clock actually played, so CONTINUE resumes in step with a
-device following ANVIL's clock.
+**Scheduled messages are never withdrawn.** Once a clock or note has been handed to Web
+MIDI with a future timestamp, ANVIL treats it as sent. `MIDIOutput.clear()` is missing or a
+no-op in some browsers (Chromium), and where it works it would also drop note-offs that are
+already scheduled, so ANVIL does not call it. Instead, PAUSE, STOP, END and play-once let the
+current lookahead window (at most 100 ms) play out: FC and the closing note-offs are
+timestamped just after the last scheduled clock, the sequencer position already counts every
+clock that was sent, and CONTINUE (FB) or a new START (FA) is never scheduled before the
+previous run's last message. A clock-following device therefore receives exactly the clocks
+ANVIL counted, in order, on every browser. The cost is that PAUSE and STOP take effect up to
+one lookahead window after the button press.
 
 Measured in the browser tests (Chromium, simulated MIDI output, 150 BPM): every clock was
 scheduled ahead of its time (minimum margin about 27 ms) and clock spacing matched the

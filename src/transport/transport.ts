@@ -42,8 +42,10 @@ export class Transport {
   listener: TransportListener = {};
   /** clock ticks processed since START (for display) */
   ticks = 0;
-  /** times of recently scheduled internal clocks (to undo lookahead on PAUSE) */
+  /** times of recently scheduled internal clocks */
   private scheduled: number[] = [];
+  /** time of the last message scheduled for the current or previous internal run */
+  private busyUntil = -Infinity;
 
   constructor(
     readonly seq: Sequencer,
@@ -75,9 +77,23 @@ export class Transport {
 
   // ------------------------------------------------------------------ user controls
 
+  /**
+   * Messages already handed to Web MIDI with a future timestamp cannot be withdrawn reliably
+   * (MIDIOutput.clear() is missing or a no-op in some browsers, and where it works it would
+   * also drop scheduled note-offs). So ANVIL lets the scheduled lookahead play out: anything
+   * that ends a run is timestamped after its last scheduled clock, and a new run never starts
+   * before that.
+   */
+  private settle(now: number): number {
+    const t = Math.max(now, this.busyUntil);
+    this.scheduled = [];
+    return t;
+  }
+
   start(): void {
     const now = this.time.now();
-    this.silenceAt(now);
+    const end = this.internal.running ? this.endRun(now) : this.settle(now);
+    this.silenceAt(end);
     if (this.source === 'external') {
       this.internal.stop();
       this.armed = 'start';
@@ -89,7 +105,7 @@ export class Transport {
     this.internal.stop();
     this.seq.reset();
     this.ticks = 0;
-    const t0 = now + this.internal.startDelayMs;
+    const t0 = Math.max(now + this.internal.startDelayMs, end + 2);
     if (this.clockOutActive) this.router.realtime(START, t0 - 1);
     this.sendPrograms(t0 - 1);
     this.setState('running');
@@ -99,21 +115,22 @@ export class Transport {
   pause(): void {
     if (this.state !== 'running' && this.state !== 'armed') return;
     const now = this.time.now();
-    this.internal.stop();
     this.armed = null;
-    if (this.source === 'internal' && this.state === 'running') {
-      // Clocks already scheduled ahead of `now` (lookahead) have not been heard yet: drop
-      // what the output can still cancel and move the position back, so CONTINUE resumes
-      // exactly where the music stopped and in step with a clock-following slave.
-      const ahead = this.scheduled.filter((t) => t > now).length;
-      this.router.clearScheduled();
-      if (ahead) this.seq.rewind(ahead);
-      this.ticks = Math.max(0, this.ticks - ahead);
-      if (this.clockOutActive) this.router.realtime(STOP, now);
-    }
-    this.scheduled = [];
-    this.silenceAt(now);
+    // the clocks already scheduled (at most one lookahead window) are played; the position
+    // therefore already counts them, and CONTINUE resumes right after the last one
+    const end = this.source === 'internal' && this.state === 'running' ? this.endRun(now) : this.settle(now);
+    this.internal.stop();
+    this.silenceAt(end);
     this.setState('paused');
+  }
+
+  /** Stop the internal clock and send FC after its last scheduled clock. Returns that time. */
+  private endRun(now: number): number {
+    this.internal.stop();
+    const end = this.settle(now) + 1;
+    if (this.clockOutActive) this.router.realtime(STOP, end);
+    this.busyUntil = end;
+    return end;
   }
 
   cont(): void {
@@ -125,7 +142,7 @@ export class Transport {
       return;
     }
     if (this.state === 'stopped') return this.start();
-    const t0 = now + this.internal.startDelayMs;
+    const t0 = Math.max(now + this.internal.startDelayMs, this.busyUntil + 2);
     if (this.clockOutActive) this.router.realtime(CONTINUE, t0 - 1);
     this.seq.invalidate();
     this.setState('running');
@@ -135,12 +152,10 @@ export class Transport {
   stop(): void {
     const now = this.time.now();
     const wasRunning = this.state === 'running';
-    this.internal.stop();
-    if (wasRunning && this.source === 'internal') this.router.clearScheduled();
-    this.scheduled = [];
     this.armed = null;
-    if (wasRunning && this.clockOutActive) this.router.realtime(STOP, now);
-    this.silenceAt(now);
+    const end = wasRunning && this.source === 'internal' ? this.endRun(now) : this.settle(now);
+    this.internal.stop();
+    this.silenceAt(end);
     this.seq.reset();
     this.ticks = 0;
     this.setState('stopped');
@@ -182,6 +197,7 @@ export class Transport {
     if (this.state !== 'running') return;
     this.scheduled.push(time);
     if (this.scheduled.length > 64) this.scheduled.shift();
+    this.busyUntil = Math.max(this.busyUntil, time);
     if (this.clockOutActive) this.router.realtime(CLOCK, time);
     this.process(time);
   }

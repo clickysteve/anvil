@@ -80,14 +80,36 @@ describe('internal clock and transport', () => {
     expect(seq.tick).toBeGreaterThan(pos);
   });
 
-  it('PAUSE undoes the lookahead so the resumed position matches what was heard', () => {
+  it('PAUSE lets the scheduled lookahead play out: FC after the last clock, position = clocks sent', () => {
     const { time, port, tr, seq } = setup();
     tr.start();
     time.advance(1000);
     tr.pause();
-    const heard = port.sent.filter((s) => s.data[0] === 0xf8 && s.time <= time.t).length;
-    expect(seq.tick).toBe(heard);
-    expect(port.cleared).toBeGreaterThan(0);
+    const clocks = port.sent.filter((s) => s.data[0] === 0xf8);
+    const fc = port.sent.find((s) => s.data[0] === 0xfc)!;
+    expect(seq.tick).toBe(clocks.length);
+    expect(fc.time).toBeGreaterThan(Math.max(...clocks.map((c) => c.time)));
+    expect(unmatchedNotes(port.sent)).toBe(0);
+    tr.cont();
+    const fb = port.sent.find((s) => s.data[0] === 0xfb)!;
+    expect(fb.time).toBeGreaterThan(fc.time);
+  });
+
+  it('START while running never interleaves old and new clocks', () => {
+    const { time, port, tr } = setup();
+    tr.start();
+    time.advance(500);
+    tr.start();
+    time.advance(500);
+    const fa2 = port.sent.filter((s) => s.data[0] === 0xfa)[1];
+    const fc = port.sent.find((s) => s.data[0] === 0xfc)!;
+    expect(fc.time).toBeLessThan(fa2.time);
+    const oldClocks = port.sent.filter((s, i) => s.data[0] === 0xf8 && i < port.sent.indexOf(fa2));
+    for (const c of oldClocks) expect(c.time).toBeLessThan(fa2.time);
+    const newClocks = port.sent.filter((s, i) => s.data[0] === 0xf8 && i > port.sent.indexOf(fa2));
+    for (const c of newClocks) expect(c.time).toBeGreaterThan(fa2.time);
+    tr.stop();
+    expect(unmatchedNotes(port.sent)).toBe(0);
   });
 
   it('STOP/RESET returns to position 0 and leaves nothing sounding', () => {

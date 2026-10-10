@@ -80,7 +80,6 @@ export class MidiAccess {
       id: o.id,
       name: o.name ?? o.id,
       send: (data, ts) => o.send(data, ts),
-      clear: typeof (o as MIDIOutput & { clear?: () => void }).clear === 'function' ? () => (o as MIDIOutput & { clear: () => void }).clear() : undefined,
     };
   }
 

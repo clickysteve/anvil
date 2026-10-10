@@ -162,12 +162,6 @@ export class Sequencer {
     this.queuedPreset = { value: index, align: immediate ? 'off' : this.getProject().options.presetAlign };
   }
 
-  /** Step back `n` clocks within the current pass (undoing lookahead on PAUSE). */
-  rewind(n: number): void {
-    this.tick = Math.max(this.passStart, this.tick - n);
-    this.dirty = true;
-  }
-
   /** Voice parameters or the playing theme's tonality changed: re-render from the next clock. */
   invalidate(): void {
     this.dirty = true;

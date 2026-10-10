@@ -39,13 +39,9 @@ export interface Sent {
 
 export class FakePort implements OutPort {
   sent: Sent[] = [];
-  cleared = 0;
   constructor(public id = 'out1', public name = 'Fake Out') {}
   send(data: number[], timestamp?: number): void {
     this.sent.push({ data: [...data], time: timestamp ?? 0 });
-  }
-  clear(): void {
-    this.cleared++;
   }
   /** status bytes only */
   statuses(): number[] {

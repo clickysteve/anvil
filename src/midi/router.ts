@@ -14,8 +14,6 @@ export interface OutPort {
   id: string;
   name: string;
   send(data: number[], timestamp?: number): void;
-  /** drop messages scheduled for the future, where the platform supports it */
-  clear?(): void;
 }
 
 export type Direction = 'out' | 'in';
@@ -87,17 +85,6 @@ export class OutputRouter {
   /** A system real-time byte (F8, FA, FB, FC) to the clock port. */
   realtime(byte: number, time: number): void {
     this.emit(this.clockPort ?? this.notePort, [byte], time);
-  }
-
-  /** Cancel messages scheduled ahead (where supported). Tracked notes stay tracked. */
-  clearScheduled(): void {
-    for (const p of new Set([this.notePort, this.clockPort])) {
-      try {
-        p?.clear?.();
-      } catch {
-        /* not supported */
-      }
-    }
   }
 
   /** End every tracked note, at `time` but never before its own note-on. */
