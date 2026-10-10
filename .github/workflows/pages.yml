@@ -48,13 +48,15 @@ jobs:
           CI: 'true'
 
       - name: Build for GitHub Pages
-        # A custom domain (CNAME file) or a <user>.github.io repository is served from /;
-        # otherwise a project site lives under /<repository>/.
+        # A custom domain (public/CNAME, copied into the build) or a <user>.github.io repository
+        # is served from /; otherwise a project site lives under /<repository>/.
         run: |
           REPO="${{ github.event.repository.name }}"
-          if [[ -s CNAME || "$REPO" == *.github.io ]]; then BASE="/"; else BASE="/$REPO/"; fi
+          if [[ -s public/CNAME || "$REPO" == *.github.io ]]; then BASE="/"; else BASE="/$REPO/"; fi
           echo "Building with base path $BASE"
           npx vite build --base="$BASE"
+          test -f dist/index.html
+          if [[ -s public/CNAME ]]; then cmp public/CNAME dist/CNAME; fi
 
       - name: Upload site
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'

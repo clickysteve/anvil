@@ -98,6 +98,25 @@ ANVIL plays. Palettes and MIDI port choices are browser preferences, not project
 Classic (black on white), Dark and Colour, plus custom palettes made by editing any colour in
 the **Look** tab. Colours are semantic roles (each panel area has its own ink).
 
+## Known limitations
+
+Not implemented (none of these block normal use):
+
+- the original's occasional large pitch jumps (their trigger is unknown, so they are not reproduced);
+- arranger overdub (Record replaces the step list);
+- master fade in/out, metronome;
+- MIDI control input (changing tonality or items from a keyboard);
+- Song Position Pointer (sent or received), clock thru;
+- MIDI file import.
+
+MIDI timing in the browser: ANVIL schedules up to 100 ms ahead and never withdraws a message
+once scheduled (browsers differ in whether they can), so PAUSE and STOP take effect at most
+one lookahead window after the button press. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+Hardware: clock in/out and transport have been tested only against a simulated Web MIDI
+device. Behaviour with real hardware, including the Squarp Hermod+ as clock master and as
+clock follower over USB, still needs to be checked on the devices themselves.
+
 ## Uncertainties and provenance
 
 - [docs/UNCERTAINTIES.md](docs/UNCERTAINTIES.md): what is unknown and what ANVIL does instead.
@@ -134,6 +153,12 @@ simulated Web MIDI device. If Playwright's bundled Chromium is not installed, po
 
 `.github/workflows/pages.yml` runs on pushes to `main`: install from the lockfile, type
 check, unit tests, browser tests, build, and only then deploy to GitHub Pages. Pull requests
-run the same checks without deploying. The base path is `/<repository>/`, or `/` when a
-`CNAME` file (custom domain) exists. One-time setup: **Settings ▸ Pages ▸ Source: GitHub
-Actions**.
+run the same checks without deploying. The site is published at
+<https://anvil.allmyfriendsaresynths.com/>: `public/CNAME` names the custom domain and is
+copied into every build, and its presence makes the workflow build for the domain root (`/`).
+Without it the build would use `/<repository>/`. The build itself uses relative asset paths
+by default, so `npm run build` output also works from any folder.
+
+One-time setup on GitHub: **Settings ▸ Pages ▸ Build and deployment ▸ Source: GitHub
+Actions**, and **Custom domain: anvil.allmyfriendsaresynths.com** with **Enforce HTTPS**.
+DNS: a `CNAME` record for `anvil` pointing to `clickysteve.github.io`.
