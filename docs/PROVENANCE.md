@@ -43,9 +43,10 @@ Colour) as the other instruments in the same collection; ANVIL's palette code is
 
 Performed for this release (commands run against the working tree and history):
 
-- File types: only TypeScript, CSS, HTML, Markdown, JSON and configuration files. No binaries,
+- File types: only TypeScript, CSS, HTML, Markdown, JSON and configuration files (plus the
+  one-line `public/CNAME` naming the site's domain). No binaries,
   images, disk images, `.PRG`, `.TUN`, `.MID`, ROM, PDF or archive files.
-  (`git ls-files | grep -viE '\.(ts|css|html|md|json|mjs|yml|gitignore|npmrc)$|^LICENSE'` returns nothing.)
+  (`git ls-files | grep -viE '\.(ts|css|html|md|json|mjs|yml|gitignore|npmrc)$|^LICENSE$|CNAME$'` returns nothing.)
 - History: the same check over every commit (`git log --all --name-only`) finds no research
   artefacts.
 - Text: no passages from the original manual or help screens. Algorithm and option names
