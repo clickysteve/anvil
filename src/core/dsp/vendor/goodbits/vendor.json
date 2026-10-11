@@ -1,0 +1,28 @@
+{
+  "source": "https://github.com/clickysteve/the-good-bits",
+  "commit": "928353c",
+  "licence": "MIT, Copyright (c) 2026 Steve Blythe",
+  "files": {
+    "js/audio-codec.js": "35aa2e5435db149abfc7490885a2d182d97ccd455e7215c861e0dcf24515689e",
+    "js/dsp.js": "b53952d9c5425bac9a8a5bd1188f8360d881ca4ef725f35b1fc3a592a53ad074",
+    "js/dsp/stretch/characters.js": "c72aa931c5dfe067e1dfea8118659877847f45e5d505767df743117e326aa222",
+    "js/dsp/stretch/cyclic.js": "de2e1a58bd641b22d9f91001a3f269230683a4ff66e2abb927cf4a8bb93665de",
+    "js/dsp/stretch/fft.js": "a570f668852b1ddda1068947f3924afdecc6ca44e530aabb7bdf4068bd5437e9",
+    "js/dsp/stretch/granular.js": "3e87e41cc7a47ec91588e6c67f5d40ae47ce170d59f2439c2ef4ce774b325ef2",
+    "js/dsp/stretch/index.js": "8ce8e21fc9cd4c4406a330e9a1120c0e0b779112677d7463fa35706413e53188",
+    "js/dsp/stretch/paulstretch.js": "23d0998bd4a33b5b3185128d6313426bbd1f869f334e34cdb63f055298471076",
+    "js/dsp/stretch/phase-vocoder.js": "c78e6a7b809cb9e65ad49881667bb58669a0e6805b2480dd127d2ef27260d0dd",
+    "js/dsp/stretch/repeat.js": "806d630a20f8724cd4cc1b05a87998b38cd973cbd50e77fd0aeac00ffb42cee4",
+    "js/dsp/stretch/rng.js": "0f78614e9e596b321cb534995804a2e872ffbcf816b3b0714dd8fef8512f5460",
+    "js/dsp/stretch/spectral-freeze.js": "9435a8646e9704ed75bf0fda920c0b9c3d92644407e9efcd12785260af096999",
+    "js/dsp/stretch/stft.js": "1493f62b509abe8f308268c36f5f54801d4d8d536e45388e042927986575dbcf",
+    "js/dsp/stretch/varispeed.js": "6b625e76a9b20f31325103ef1736142d14941cb0ca077e7d144c12a694c1e96b",
+    "js/dsp/stretch/windows.js": "3fdfce46b1c9045ed98a4e2b6451f6332eccd6dbd63be1a6f51a8795df5ed5fe",
+    "js/dsp/stretch/wsola.js": "b5133a7c2b36ca8e132ade3763420d48172da8fe98242461884210ca15ceba41",
+    "js/outputstage.js": "102d1d02c7047f365ce434dc2a43cb7918a1af469f6e2361b2bdd207948eeb1f",
+    "js/stretch-fx/render.js": "02d6d3e42ee19045e2874720cf4f21396d8f5717cc341999aaa1e4d03e618ac2"
+  },
+  "modified": {
+    "js/outputstage.js": "one export statement appended after the upstream content; upstream bytes unchanged"
+  }
+}
