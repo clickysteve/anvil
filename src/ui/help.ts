@@ -31,7 +31,7 @@ const SECTIONS: [string, string[]][] = [
     'Editing',
     [
       'Drag a note up or down to change its pitch, sideways to move it in time, or drag its right edge to change its length. Neighbouring notes and rests make room; the theme keeps its length and no note is removed by dragging.',
-      'Mouse wheel scrolls up and down (pitch); a sideways swipe or Shift+wheel scrolls through time; Ctrl/Cmd+wheel or a trackpad pinch zooms (add Shift to zoom pitch). Drag empty space to pan. FIT (or F) shows the whole theme. Drag the bottom edge of the view to make it taller, or press EXPAND to give it the whole width.',
+      'Mouse wheel scrolls up and down (pitch); a sideways swipe or Shift+wheel scrolls through time; Ctrl/Cmd+wheel or a trackpad pinch zooms (add Shift to zoom pitch). Drag empty space to pan. FIT (or F) shows the whole theme. Drag the bottom edge of the view to make it taller. EXPAND opens the theme in a maximised editor window (just the roll, the edit buttons and a status line); RESTORE or Esc returns to the normal layout, with your edits, selection and playback unchanged.',
       'Backspace (or DELETE) turns the selected note into a rest. Double-click a rest to put a note there. With a note selected: Up/Down move it by a degree (Shift: an octave), A cycles its accent, R toggles note/rest, [ and ] shorten or lengthen it, Left/Right select neighbours.',
       'Ctrl-click (Cmd-click) a slot to copy the viewed item there. Alt-click a slot to view it without playing it.',
     ],

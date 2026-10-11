@@ -119,7 +119,7 @@ test('generate, select, view and edit', async ({ page }) => {
   await expect(page.getByTestId('view-info')).not.toHaveText(t!);
 });
 
-test('theme view: drag notes, resize, scroll, zoom, delete, add, expand', async ({ page }) => {
+test('theme view: drag notes, resize, scroll, zoom, delete, add', async ({ page }) => {
   const errs = watchErrors(page);
   await open(page);
   const theme = () => page.evaluate(() => {
@@ -164,15 +164,87 @@ test('theme view: drag notes, resize, scroll, zoom, delete, add, expand', async 
   await page.mouse.wheel(0, 120);
   await page.mouse.wheel(300, 0);
   await page.getByTestId('ed-fit').click();
-  // expand
-  const h0 = (await view.boundingBox())!.height;
-  await page.getByTestId('expand').click();
-  await expect(page.getByTestId('expand')).toHaveAttribute('aria-pressed', 'true');
-  const h1 = (await view.boundingBox())!.height;
-  expect(h1).toBeGreaterThan(h0);
-  await expect(page.getByTestId('slot-TB')).toBeVisible();
-  await page.getByTestId('expand').click();
   expect(errs).toEqual([]);
+});
+
+test('maximised theme editor: opens alone, edits live, restores exactly', async ({ page }) => {
+  const errs = watchErrors(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await open(page);
+  const a = () => page.evaluate(() => {
+    const s = (window as unknown as { anvil: { focus: string; project: { selected: string }; transport: { state: string }; seq: { tick: number; item: string }; focused: { events: { degree: number; rest: boolean }[] } } }).anvil;
+    return { focus: s.focus, selected: s.project.selected, state: s.transport.state, tick: s.seq.tick, item: s.seq.item, events: s.focused.events };
+  });
+  await page.getByTestId('slot-TB').click();
+  await page.getByTestId('start').click();
+  await expect(page.getByTestId('transport-state')).toHaveText('RUNNING');
+  const before = await a();
+  const editor = page.getByTestId('theme-editor');
+  await expect(editor).toBeHidden();
+
+  // 1-3: EXPAND opens the focused editor, without the bank matrix, with RESTORE visible
+  await page.getByTestId('expand').click();
+  await expect(editor).toBeVisible();
+  await expect(page.getByTestId('editor-title')).toContainText('THEME EDITOR');
+  await expect(page.getByTestId('editor-title')).toContainText('TB');
+  await expect(editor.getByTestId('theme-view')).toBeVisible();
+  await expect(editor.getByTestId('ed-up')).toBeVisible();
+  await expect(editor.getByTestId('view-info')).toBeVisible();
+  await expect(editor.getByTestId('bank')).toHaveCount(0);
+  await expect(editor.locator('.transport, .topbar, [data-area="constraints"], [data-area="tonality"]')).toHaveCount(0);
+  await expect(page.getByTestId('restore')).toBeVisible();
+  // the editor covers the viewport and the roll fills the remaining space
+  const vb = (await editor.boundingBox())!;
+  expect(vb.width).toBeGreaterThanOrEqual(1430);
+  expect(vb.height).toBeGreaterThanOrEqual(890);
+  const rollBox = (await editor.getByTestId('theme-view').boundingBox())!;
+  expect(rollBox.height).toBeGreaterThan(600);
+  // rows stay a readable size rather than stretching to fill the screen
+  const noteH = (await editor.locator('rect.n').first().boundingBox())!.height;
+  expect(noteH).toBeLessThanOrEqual(18);
+
+  // 9: editing controls work in the editor; the edit is the live theme
+  await editor.locator('rect.n').first().click();
+  const sel = await page.evaluate(() => (window as unknown as { anvil: { selectedEvent: number } }).anvil.selectedEvent);
+  await editor.getByTestId('ed-up').click();
+  const edited = await a();
+  expect(edited.events[sel].degree).toBe(before.events[sel].degree + 1);
+  // F fits, Escape restores (5), and Escape does not touch the music
+  await page.keyboard.press('f');
+  await page.keyboard.press('Escape');
+  await expect(editor).toBeHidden();
+  let after = await a();
+  expect(after.events).toEqual(edited.events); // 7: edits survive
+  expect(after.focus).toBe('TB'); // 6: selection unchanged
+  expect(after.selected).toBe('TB');
+  expect(after.state).toBe('running'); // 8: playback untouched
+  expect(after.tick).toBeGreaterThan(before.tick);
+  await expect(page.getByTestId('bank')).toBeVisible();
+  await expect(page.getByTestId('expand')).toBeFocused();
+
+  // 4: RESTORE button returns to the normal layout
+  await page.getByTestId('expand').click();
+  await expect(editor).toBeVisible();
+  await page.getByTestId('restore').click();
+  await expect(editor).toBeHidden();
+  await expect(page.getByTestId('expand')).toHaveText('⤢ EXPAND');
+  after = await a();
+  expect(after.state).toBe('running');
+
+  // 10/12: the exit stays visible and nothing overflows at other sizes
+  await page.getByTestId('expand').click();
+  for (const [w, h] of [[1650, 900], [1280, 800], [1024, 768]]) {
+    await page.setViewportSize({ width: w, height: h });
+    await expect(page.getByTestId('restore')).toBeInViewport({ ratio: 1 });
+    await expect(editor.getByTestId('ed-up')).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+    const r = (await editor.boundingBox())!;
+    expect(r.width).toBeLessThanOrEqual(w);
+    expect(r.height).toBeLessThanOrEqual(h);
+  }
+  await page.getByTestId('restore').click();
+  await page.getByTestId('stop').click();
+  expect(errs).toEqual([]); // 11
 });
 
 test('playback over simulated MIDI: start, pause, continue, stop with clock out', async ({ page }) => {

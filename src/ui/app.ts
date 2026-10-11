@@ -283,6 +283,7 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
     if (!force && key === lastViewKey) return;
     lastViewKey = key;
     roll.set(t, { key: `${s.focus}:${t?.seed}`, selected: s.selectedEvent, locks: s.isExtended ? p().extended.locks[s.focus] ?? [] : [], compare: cmp });
+    updateEditorTitle();
     viewTitle.textContent = `THEME VIEW  ${s.focus}${isVariation(s.focus) ? ` (variation of T${s.focus[1]})` : ''}${cmp ? `  compared with ${s.compare}` : ''}`;
     if (!t) viewInfo.textContent = 'Empty slot.';
     else {
@@ -336,16 +337,74 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
     button('DELETE', 'Delete the selected note: it becomes a rest (Backspace)', () => s.deleteSelected(), { 'data-testid': 'ed-delete' }),
     button('FIT', 'Zoom to show the whole theme (F)', () => { roll.fit(); roll.render(); }, { 'data-testid': 'ed-fit' }),
   );
-  const expandBtn = toggle({
-    label: '⤢ EXPAND',
-    hint: 'Give the theme view the whole width and more height (the slot grid becomes compact)',
-    get: () => s.prefs.expanded,
-    set: (v) => {
-      s.setPrefs({ expanded: v });
-      requestAnimationFrame(() => { roll.fit(); roll.render(); });
-    },
-    testid: 'expand',
-  });
+  // ------------------------------------------------------------------ maximised editor
+  // EXPAND opens a dedicated editor window over the application. The roll, the edit toolbar and
+  // the status line are the same elements as in the normal view: they are moved into the window
+  // and moved back on RESTORE, so there is one view of one theme and nothing is copied.
+  let editorOpen = false;
+  let savedView: RollView['view'] | null = null;
+  const expandBtn = button('⤢ EXPAND', 'Open the theme in a maximised editor window (Esc or RESTORE to return)', () => (editorOpen ? closeEditor() : openEditor()), { class: 'expand', 'data-testid': 'expand', 'aria-pressed': 'false' });
+  const editorName = h('span', { class: 'ewin-name', 'data-testid': 'editor-title' });
+  const editorBody = h('div', { class: 'ewin-body' });
+  const editorTools = h('div', { class: 'ewin-tools' });
+  const editorStatus = h('div', { class: 'ewin-status' });
+  const restoreBtn = button('RESTORE ×', 'Return to the normal layout (Esc)', () => closeEditor(), { class: 'ewin-restore', 'data-testid': 'restore' });
+  const editorWin = h(
+    'div',
+    { class: 'ewin', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Theme editor', 'data-testid': 'theme-editor', 'data-area': 'bank', hidden: true },
+    h(
+      'div',
+      { class: 'ewin-win' },
+      h(
+        'div',
+        { class: 'ewin-title' },
+        editorName,
+        h('div', { class: 'spacer' }),
+        button('FIT', 'Zoom to show the whole theme (F)', () => { roll.fit(); roll.render(); }, { 'data-testid': 'ewin-fit' }),
+        restoreBtn,
+      ),
+      editorBody,
+      editorTools,
+      editorStatus,
+    ),
+  );
+  const marks = { roll: document.createComment('roll'), tools: document.createComment('tools'), info: document.createComment('info') };
+  const updateEditorTitle = () => {
+    editorName.textContent = `ANVIL  /  THEME EDITOR  /  ${s.focus}${isVariation(s.focus) ? `  (variation of T${s.focus[1]})` : ''}`;
+  };
+  function openEditor(): void {
+    if (editorOpen) return;
+    editorOpen = true;
+    savedView = roll.view;
+    viewBox.before(marks.roll);
+    editBar.before(marks.tools);
+    viewInfo.before(marks.info);
+    editorBody.append(viewBox);
+    editorTools.append(editBar);
+    editorStatus.append(viewInfo);
+    updateEditorTitle();
+    editorWin.hidden = false;
+    expandBtn.textContent = 'RESTORE';
+    expandBtn.setAttribute('aria-pressed', 'true');
+    roll.maxFitRow = 18;
+    roll.fitTime();
+    roll.render();
+    viewBox.focus();
+  }
+  function closeEditor(): void {
+    if (!editorOpen) return;
+    editorOpen = false;
+    marks.roll.replaceWith(viewBox);
+    marks.tools.replaceWith(editBar);
+    marks.info.replaceWith(viewInfo);
+    editorWin.hidden = true;
+    expandBtn.textContent = '⤢ EXPAND';
+    expandBtn.setAttribute('aria-pressed', 'false');
+    roll.maxFitRow = 24;
+    if (savedView) roll.view = savedView;
+    roll.render();
+    expandBtn.focus();
+  }
   const bank = panel('bank', 'THEMES & VARIATIONS', grid, bankActions, h('div', { class: 'viewhead' }, viewTitle, expandBtn), viewBox, viewInfo, editBar);
 
   // ------------------------------------------------------------------ tonality
@@ -791,11 +850,11 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
     h('main', { class: 'work' }, constraints, bank, side),
     voices,
     footer,
+    editorWin,
     help,
   );
   root.classList.add('anvil');
   bind(() => root.classList.toggle('extended', s.isExtended));
-  bind(() => root.querySelector('main.work')?.classList.toggle('expanded', s.prefs.expanded));
   bind(() => root.classList.toggle('no-tips', !s.prefs.tips));
 
   // ------------------------------------------------------------------ updates
@@ -848,6 +907,11 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
   });
   document.addEventListener('keydown', (e) => {
     if (help.open) return;
+    if (editorOpen && e.key === 'Escape') {
+      e.preventDefault();
+      closeEditor();
+      return;
+    }
     if (typing() || (e.target as HTMLElement).tagName === 'SELECT') return;
     const st = s.transport.state;
     if (e.key === ' ') {

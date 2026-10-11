@@ -465,28 +465,6 @@ h3 {
   align-items: center;
   gap: 8px;
 }
-/* expanded theme view: the bank panel spans the workspace; the slot grid turns compact */
-.work.expanded {
-  grid-template-columns: minmax(250px, 300px) 1fr;
-}
-.work.expanded > .panel[data-area='bank'] {
-  grid-column: 1 / -1;
-  order: -1;
-}
-.work.expanded .slot {
-  min-height: 22px;
-}
-.work.expanded .slot .mini {
-  display: none;
-}
-.work.expanded .rollwrap {
-  height: max(420px, calc(100vh - 360px));
-}
-@media (max-width: 760px) {
-  .work.expanded {
-    grid-template-columns: 1fr;
-  }
-}
 .roll {
   display: block;
   font: 9px var(--mono);
@@ -792,4 +770,89 @@ dialog.help::backdrop {
   color: var(--base-ink);
   border-color: var(--base-ink);
   margin-top: 14px;
+}
+
+/* ------------------------------------------------------------ maximised theme editor
+   An application window over ANVIL: title bar, roll, edit toolbar, status line. */
+.ewin {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--desktop);
+  padding: 6px;
+  display: flex;
+}
+.ewin[hidden] {
+  display: none;
+}
+.ewin-win {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+.ewin-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 2px 4px 2px 8px;
+}
+.ewin-name {
+  font-family: var(--title);
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ewin-title button {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+  font-family: var(--title);
+  font-size: 13px;
+  padding: 1px 8px;
+  flex: none;
+}
+.ewin-title .ewin-restore {
+  border-width: 2px;
+}
+.ewin-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.ewin-body .rollwrap {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  resize: none;
+  border: 0;
+}
+.ewin-tools {
+  border-top: 1px solid var(--ink);
+  padding: 0 6px;
+}
+.ewin-tools .actions.edit {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  margin: 4px 0;
+}
+.ewin-tools .actions.edit button {
+  flex: none;
+}
+.ewin-status {
+  border-top: 1px solid var(--ink);
+  padding: 2px 6px;
+}
+.ewin-status .vinfo {
+  min-height: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

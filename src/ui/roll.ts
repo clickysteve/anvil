@@ -54,6 +54,8 @@ export class RollView {
   private playheadEl: SVGLineElement | null = null;
   private lastPlay: number | null = null;
   private interacted = 0;
+  /** tallest row height FIT may choose (the maximised editor keeps rows compact) */
+  maxFitRow = 24;
 
   constructor(private cb: RollCallbacks, attrs: Record<string, unknown> = {}) {
     this.svg = svg('svg', { class: 'roll', role: 'img', 'aria-label': 'Theme view' });
@@ -110,10 +112,35 @@ export class RollView {
     const lo = Math.min(...ds) - 2;
     const hi = Math.max(...ds) + 2;
     const rows = Math.max(10, hi - lo + 1);
-    this.rh = Math.max(8, Math.min(24, (this.height - TOP - BOTTOM) / rows));
+    this.rh = Math.max(8, Math.min(this.maxFitRow, (this.height - TOP - BOTTOM) / rows));
     const spare = this.visRows - (hi - lo + 1);
     this.topDeg = hi + Math.max(0, spare / 2);
     this.scrollMb = 0;
+    this.clamp();
+  }
+
+  /**
+   * Fit only the time axis to the view and centre the theme's pitches vertically, keeping the
+   * current row height: a bigger view shows more time and more pitch rows, not taller notes.
+   */
+  fitTime(): void {
+    const t = this.theme;
+    if (!t) return;
+    this.cw = Math.max(6, Math.min(48, (this.width - GUTTER - 4) / Math.max(1, t.length)));
+    this.rh = Math.min(this.rh, this.maxFitRow);
+    const ds = t.events.filter((e) => !e.rest).map((e) => e.degree);
+    const mid = (Math.min(...ds) + Math.max(...ds)) / 2;
+    this.topDeg = mid + this.visRows / 2;
+    this.scrollMb = 0;
+    this.clamp();
+  }
+
+  /** Current zoom and scroll, so a caller can put the view back exactly. */
+  get view(): { cw: number; rh: number; scrollMb: number; topDeg: number } {
+    return { cw: this.cw, rh: this.rh, scrollMb: this.scrollMb, topDeg: this.topDeg };
+  }
+  set view(v: { cw: number; rh: number; scrollMb: number; topDeg: number }) {
+    Object.assign(this, v);
     this.clamp();
   }
 
