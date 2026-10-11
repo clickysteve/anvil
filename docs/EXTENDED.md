@@ -18,7 +18,8 @@ changes the music, and Extended data (such as locks) is kept but inactive in Cla
 | Comparison | Draw another item as an outline over the theme view | n/a |
 
 Available in both modes: hand editing, external MIDI clock in, clock out, MIDI file export,
-audio preview, seeds stored with every theme.
+internal audio (synth and samples), output processing, audio export, seeds stored with every
+theme.
 
 ## Extension points (not yet implemented)
 
