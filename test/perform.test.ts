@@ -132,3 +132,28 @@ describe('frozen performance', () => {
     expect(secondsPerClock(5)).toBe(secondsPerClock(20));
   });
 });
+
+describe('ANVIL timeline adapter', () => {
+  it('turns a frozen performance into a valid core timeline with voices and drum assignments', async () => {
+    const { performanceTimeline, voiceId, drumIndexOf } = await import('../src/audio/anvilTimeline');
+    const { validateTimeline, TimeMap } = await import('../src/core/events/timeline');
+    const p = busyProject();
+    const perf = freezePerformance(p, { passes: 2 });
+    const t = performanceTimeline(perf, p);
+    expect(validateTimeline(t)).toEqual([]);
+    expect(t.tempo).toEqual({ ppq: 24, changes: [{ tick: 0, bpm: p.tempo }] });
+    expect(t.length).toBe(perf.clocks);
+    expect(t.voices.map((v) => v.name)).toEqual(['Voice 1 theme', 'Voice 2', 'Voice 3 drums', 'Voice 4', 'Voice 5', 'Voice 6']);
+    const ons = perf.events.filter((e) => e.kind === 'on');
+    expect(t.events.length).toBe(ons.length);
+    for (const n of t.events) {
+      if (n.type !== 'note') continue;
+      const d = drumIndexOf(n.instrument);
+      if (n.voice === voiceId(2)) expect(p.drums[d]).toBe(n.pitch);
+      else expect(d).toBe(-1);
+      expect(n.tick + n.duration).toBeLessThanOrEqual(perf.clocks);
+    }
+    // seconds per clock match the transport's clock period
+    expect(new TimeMap(t.tempo).seconds(24)).toBeCloseTo(60 / p.tempo, 12);
+  });
+});
