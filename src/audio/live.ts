@@ -82,10 +82,22 @@ export class LiveAudio implements AudioSink {
     this.mixer.setMasterFx(a.master);
   }
 
-  /** performance.now() milliseconds -> AudioContext seconds (never in the past). */
+  /**
+   * performance.now() milliseconds -> AudioContext seconds (never in the past).
+   *
+   * getOutputTimestamp() pairs an audio-clock time with the performance.now() time at which it
+   * is audible, smoothly, unlike ctx.currentTime, which only moves once per audio callback and
+   * made note spacing jitter by up to a callback. Adding the context's own latency keeps the
+   * mapping relative to the render position (where the original preview scheduled), so the
+   * first notes after START (scheduled 30 ms ahead) are never late. Browsers without
+   * getOutputTimestamp use currentTime, as the original preview did.
+   */
   private at(timeMs: number): number {
     const ctx = this.ctx!;
-    return Math.max(ctx.currentTime, ctx.currentTime + (timeMs - performance.now()) / 1000);
+    const ts = typeof ctx.getOutputTimestamp === 'function' ? ctx.getOutputTimestamp() : null;
+    const latency = (ctx.baseLatency || 0) + (ctx.outputLatency || 0);
+    const t = ts && ts.contextTime !== undefined && ts.performanceTime ? ts.contextTime + latency + (timeMs - ts.performanceTime) / 1000 : ctx.currentTime + (timeMs - performance.now()) / 1000;
+    return Math.max(ctx.currentTime, t);
   }
 
   // ------------------------------------------------------------------ AudioSink (transport)
