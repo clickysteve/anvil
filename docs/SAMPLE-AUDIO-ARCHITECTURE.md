@@ -1,8 +1,12 @@
 # Sample engine, output processing and audio export: architecture
 
 This document records what ANVIL's audio system was before this work, what The Good Bits
-offers, and how the two were joined. It was written after reading both code bases and before
-the implementation; sections marked **Implemented** were updated to match the shipped code.
+offers, and how the two are being joined.
+
+**Status: design.** Nothing described in sections 3-8 is implemented yet except the frozen
+performance (`src/engine/perform.ts`, section 3.3 step 1). The shared parts are being built as
+**Slop Factory Core** (see `docs/SLOP-FACTORY-CORE.md` once it exists); this document will be
+revised to describe what actually ships.
 
 ## 1. ANVIL as it was
 
@@ -54,16 +58,19 @@ live audio graph and no AudioWorklet.
 | `js/outputstage.js` `applyDrive` | Saturation: tape (`tanh`), tube (biased `tanh`), diode (hard clip at +-1), fuzz. Wet amount and gain both follow the amount (0-100). | **Yes, real time.** Memoryless. |
 | `js/outputstage.js` `applyOutputStage` | Ten "character" modes (Cassette, Reel-to-Reel, Damaged, Vinyl, Boombox, AM Radio, VHS Hi-Fi, Bus Comp, Lathe, Phone Bus) with Mix and Intensity. Each mode is a factory returning a per-sample `(L, R) => [L, R]` closure with its own filter, delay-line, envelope and seeded xorshift noise state. | **Yes, real time.** Although the public function is whole-buffer, every mode is a causal per-sample state machine and streams unchanged. |
 | `js/outputstage.js` filter primitives | One-pole low/high-pass, RBJ peak and low shelf, envelope follower (private helpers). | The one-pole low-pass is reused as the 12-bit engine's tone filter. |
-| `js/dsp/stretch/*` (WSOLA, phase vocoder, granular, PaulStretch, spectral freeze, repeat, **cyclic**) | Time-stretch engines. `cyclic.js` is labelled "Akai S-series style cyclic stretch"; the "Vintage" and "Cyclic 12-bit" characters add 12-bit quantisation. | **No.** They change duration, need the whole buffer and look ahead. ANVIL's sampler transposes by playback rate (as the brief requires). Recorded as candidates for future *per-sample preprocessing*, not output effects. |
+| `js/dsp/stretch/*` (WSOLA, phase vocoder, granular, PaulStretch, spectral freeze, repeat, cyclic, varispeed) | Time-stretch engines behind a character registry. `cyclic` lays fixed-length cycles end to end with linear crossfades; `repeat` repeats whole chunks; several characters add 12-bit (or lower) quantisation. | **Not as output effects** (they change duration, need the whole buffer and look ahead). **Yes as sample transformations**, via Good Bits' STRETCH FX chain. |
 | `js/dsp/pitch-shift.js` | Offline FFT pitch shift built on the stretch engines. | No (offline, whole buffer). |
 | `js/lab/dsp.js` | LAB's experimental primitive vocabulary for randomly generated effect graphs, plus `dcBlock` and `softLimit` safety utilities. | No for the vocabulary (designed for random exploration of offline buffers, several are whole-buffer spectral). `softLimit` is a stateless per-sample curve; ANVIL does not need it (see 6.4). |
 | `js/flip`, `js/play-nice`, `js/stretch-fx` | Loop remixing, conforming and arrangement tools. | No (not processors). |
 
-**No exact sampler emulation exists in Good Bits.** Nothing in it models an Akai S900/S950
-(or any specific machine's) converter, filter or companding. Good Bits' own wording is
-"inspired by", "in the spirit of", "SP-1200-style drop-sample grit". ANVIL keeps that
-distinction: its engine is labelled **12-BIT SAMPLER (Akai-style approximation)** and the
-help text states what it actually does.
+**Correction.** An earlier draft of this section said Good Bits had no sampler-style
+processing because nothing was named after a hardware sampler. That was wrong: Good Bits
+deliberately uses generic names, and its sampler-inspired processing lives mainly in the
+time-stretch engines (`cyclic`, `repeat`, the `Vintage`, `'93`, `Cyclic 12-bit` and `Tape`
+characters), the crunch stage and the varispeed pitch of the STRETCH FX chain. Those are
+destructive sample transformations, not continuous output effects. A full inventory, by actual
+DSP behaviour, is in `docs/GOOD-BITS-DSP-INVENTORY.md`. ANVIL keeps Good Bits' generic names
+and makes no claim to emulate any specific machine.
 
 ## 3. Integration plan
 
@@ -94,7 +101,7 @@ help text states what it actually does.
   `OfflineAudioContext`, so live playback, audition and export run the same code.
 * `src/audio/engine.ts`: the graph and note handling for both contexts.
 
-### 3.2 Real-time graph (Implemented)
+### 3.2 Real-time graph
 
 ```
 per voice v (0-5):
@@ -116,7 +123,7 @@ The live `AudioContext` is created at 44.1 kHz when the browser allows it (it re
 the device), so live processing runs at the same rate as the export. If the browser refuses,
 it runs at the device rate and the rate divider's effective rate (shown in Hz) differs.
 
-### 3.3 Offline rendering (Implemented)
+### 3.3 Offline rendering
 
 1. `freezePerformance(project, range)` (`src/engine/perform.ts`) runs a fresh `Sequencer` on
    a `structuredClone` of the project, clock by clock, exactly as the MIDI export does, and
@@ -132,7 +139,7 @@ it runs at the device rate and the rate divider's effective rate (shown in Hz) d
    and cancellation. Nothing touches the live context, the transport, the MIDI router or the
    project.
 
-### 3.4 Live event path (Implemented)
+### 3.4 Live event path
 
 The transport hands every sequencer event (with its voice index) to an `AudioSink` beside
 the MIDI router; STOP, PAUSE, panic and clock loss call `allNotesOff`/`panic` on it. MIDI
@@ -140,7 +147,7 @@ output is unchanged. The internal synth keeps its old behaviour (it is the old p
 moved): waveform by MIDI channel, noise percussion on channel 10, note pairing by
 `channel:note`.
 
-## 4. Voice-to-sample mapping (Implemented)
+## 4. Voice-to-sample mapping
 
 | Slot | Plays | Used when |
 |---|---|---|
@@ -161,7 +168,7 @@ and a note-off (or a retrigger) releases the holder. ONE SHOT notes ignore relea
 repeated drum hits overlap; GATED and LOOP notes release with the slot's release time;
 different notes are fully polyphonic. A per-voice cap (32 sample notes) steals the oldest.
 
-## 5. Sample playback (Implemented)
+## 5. Sample playback
 
 * Decoding: `decodeAudioData` on an `OfflineAudioContext` at 44.1 kHz, so the decoded data
   is the same for live and export. Validation: unsupported type, empty file, size limit
@@ -177,14 +184,14 @@ different notes are fully polyphonic. A per-voice cap (32 sample notes) steals t
 * Loop points are validated (`START <= LOOP START < LOOP END <= END`, at least 1 ms) and can
   be snapped to rising zero crossings.
 
-## 6. Processing (Implemented)
+## 6. Processing
 
 ### 6.1 Engines
 
 | Engine | Chain (Good Bits functions in **bold**) | Parameters |
 |---|---|---|
 | CLEAN | exact copy | none |
-| 12-BIT SAMPLER (Akai-style approximation) | input gain -> **drive** -> **crunch** -> **one-pole low-pass** -> output gain | bits (12), rate divide (2 = 22.05 kHz), drive type and amount, tone (Hz), in/out dB |
+| 12-BIT (crunch preset) | input gain -> **drive** -> **crunch** -> **one-pole low-pass** -> output gain | bits (12), rate divide (2 = 22.05 kHz), drive type and amount, tone (Hz), in/out dB |
 | BITCRUSH | input gain -> **crunch** -> output gain | bits, rate divide, in/out dB |
 | DRIVE | input gain -> **drive** -> output gain | type, amount, in/out dB |
 | CHARACTER | input gain -> **output stage** -> output gain | mode (10 Good Bits modes), mix, intensity, in/out dB |
@@ -224,7 +231,7 @@ Two differences remain and are documented rather than hidden:
 * **Determinism.** Offline rendering is deterministic: the same project, range and
   settings give the same samples (verified in the browser tests).
 
-## 7. Persistence (Implemented)
+## 7. Persistence
 
 * Project format **version 2** adds `audio`: voice sources, 13 slots (sample id, file
   name, root, tune, fine, volume, pan, mode, start/end, loop points, release, mute), six
@@ -241,7 +248,7 @@ Two differences remain and are documented rather than hidden:
 * Missing samples (a project opened on another computer without its bundle) are shown as
   MISSING in their slot; the voice falls back to the synth until the file is loaded again.
 
-## 8. Export format (Implemented)
+## 8. Export format
 
 * WAV, RIFF/WAVE, PCM 16-bit little endian, 44 100 Hz, 2 channels, interleaved.
   Conversion: clamp to [-1, 1], scale by 32767, round. No dither (so silence stays exactly
@@ -267,7 +274,7 @@ Two differences remain and are documented rather than hidden:
   performance are not captured.
 * Live note timing has a few milliseconds of jitter; export timing is exact.
 * Noise phase of stateful CHARACTER modes can differ between live and export (6.3).
-* The 12-bit engine is an approximation, not an emulation of any specific sampler.
+* No processor emulates a specific machine; names describe what the DSP does.
 * Very long exports are limited to 20 minutes.
 * AudioWorklet needs a secure context (https or localhost). Without it, audio plays
   unprocessed and processing controls say so.
