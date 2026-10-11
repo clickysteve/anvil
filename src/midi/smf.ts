@@ -1,28 +1,19 @@
 /**
  * Standard MIDI File export (format 1).
  *
- * The export runs the same Sequencer as live playback, clock by clock, without real time, so
- * the file contains exactly what ANVIL would play (including voice delays, articulation and
- * the arranger). Division is 96 ticks per quarter note (4 per MIDI clock).
+ * The export reads the frozen performance (engine/perform.ts): the same Sequencer as live
+ * playback, run clock by clock without real time, so the file contains exactly what ANVIL
+ * would play (including voice delays, articulation and the arranger). Division is 96 ticks per quarter note (4 per MIDI clock).
  *
  * Track 0 holds the name, tempo and a 4/4 time signature; then one track per MIDI channel used.
  */
-import { programChanges, Sequencer } from '../engine/sequencer';
-import type { ItemId, Project } from '../engine/types';
+import { freezePerformance, type PerformanceRange } from '../engine/perform';
+import type { Project } from '../engine/types';
 
 export const SMF_DIVISION = 96;
 const PER_CLOCK = SMF_DIVISION / 24;
 
-export interface ExportOptions {
-  /** play this item (default: the selected item) */
-  item?: ItemId;
-  /** number of passes of the item (ignored with arranger) */
-  passes?: number;
-  /** play the arranger once through instead */
-  arranger?: boolean;
-  /** safety limit in clocks */
-  maxClocks?: number;
-}
+export type ExportOptions = PerformanceRange;
 
 interface TimedMsg {
   clock: number;
@@ -62,36 +53,17 @@ function track(events: { tick: number; data: number[] }[], name?: string): numbe
   return chunk('MTrk', body);
 }
 
-/** Render playback into timed MIDI messages, in clocks. */
+/** Render playback into timed MIDI messages, in clocks (from the shared frozen performance). */
 export function renderPerformance(project: Project, opts: ExportOptions = {}): { msgs: TimedMsg[]; clocks: number } {
-  const p: Project = structuredClone(project);
-  if (opts.item) p.selected = opts.item;
-  const seq = new Sequencer(() => p, (i) => {
-    const preset = p.accPresets[i];
-    if (preset) p.voices = p.voices.map((v, k) => (v.locked ? v : { ...preset[k] }));
-  });
-  seq.reset();
+  const perf = freezePerformance(project, opts);
   const msgs: TimedMsg[] = [];
   let order = 0;
-  if (p.options.sendProgramsAtStart) for (const m of programChanges(p.voices)) msgs.push({ clock: 0, data: m, order: order++ });
-  const max = opts.maxClocks ?? 24 * 4 * 512;
-  const passes = Math.max(1, opts.passes ?? 1);
-  if (opts.arranger && p.arranger.steps.length) {
-    p.options.arrangerLoop = false;
-    seq.startArranger();
+  for (const m of perf.programs) msgs.push({ clock: 0, data: m, order: order++ });
+  for (const e of perf.events) {
+    const data = e.kind === 'on' ? [0x90 | ((e.ch - 1) & 15), e.note, e.vel] : [0x80 | ((e.ch - 1) & 15), e.note, 0];
+    msgs.push({ clock: e.clock, data, order: order++ });
   }
-  let clock = 0;
-  for (; clock < max; clock++) {
-    if (!opts.arranger && seq.pass >= passes - 1 && seq.pass >= 0 && clock >= seq.passStart + seq.passClocks) break;
-    if (opts.arranger && !seq.arrangerPlaying && clock > 0) break;
-    const r = seq.tick1();
-    for (const e of r.events) {
-      const data = e.kind === 'on' ? [0x90 | ((e.ch - 1) & 15), e.note, e.vel] : [0x80 | ((e.ch - 1) & 15), e.note, 0];
-      msgs.push({ clock, data, order: order++ });
-    }
-  }
-  for (const e of seq.silence()) msgs.push({ clock, data: [0x80 | ((e.ch - 1) & 15), e.note, 0], order: order++ });
-  return { msgs, clocks: clock };
+  return { msgs, clocks: perf.clocks };
 }
 
 export function exportSmf(project: Project, opts: ExportOptions = {}): Uint8Array {

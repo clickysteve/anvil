@@ -25,6 +25,8 @@ export interface NoteOut {
   note: number;
   vel: number;
   voice: number; // 0..5
+  /** drum-table index (0..6) when a drum harmony chose the note, -1 for melodic notes */
+  drum: number;
 }
 
 /** Per-voice state carried from one pass to the next (contrary motion). */
@@ -191,7 +193,7 @@ interface HarmonyContext {
   drumDir: number;
 }
 
-type HarmonyResult = { degree: number } | { drum: number } | null;
+type HarmonyResult = { degree: number } | { drum: number; index: number } | null;
 
 function arpPattern(span: number, kind: 9 | 10 | 11): number[] {
   const up: number[] = [];
@@ -237,7 +239,7 @@ function harmonise(h: number, tran: number, tr: Trigger, cx: HarmonyContext): Ha
       idx = live[k < n ? k : cycle - k];
       cx.drumIndex++;
     }
-    return { drum: cx.drums[idx] };
+    return { drum: cx.drums[idx], index: idx };
   }
   switch (h) {
     case 1: // parallel
@@ -343,15 +345,15 @@ export function renderPass(inp: RenderInput): { notes: NoteOut[]; state: VoiceSt
       drumIndex: 0,
       drumDir: 1,
     };
-    const sounding: { tr: Trigger; note: number }[] = [];
+    const sounding: { tr: Trigger; note: number; drum: number }[] = [];
     for (const tr of triggers) {
       const h = harmonise(harmony, tran, tr, cx);
       if (!h) continue;
       const note = 'drum' in h ? h.drum : foldNote(degreeToMidi(h.degree, inp.tonality, inp.entries) + 12 * v.octave);
-      sounding.push({ tr, note });
+      sounding.push({ tr, note, drum: 'drum' in h ? h.index : -1 });
     }
     const feelRng = rng.fork('feel');
-    sounding.forEach(({ tr, note }, i) => {
+    sounding.forEach(({ tr, note, drum }, i) => {
       const next = i + 1 < sounding.length ? sounding[i + 1].tr.tick : sounding[0].tr.tick + loopClocks;
       const dur = articulate(v.art, tr.accent === 1, tr.len, t.microbeat, next - tr.tick);
       notes.push({
@@ -361,6 +363,7 @@ export function renderPass(inp: RenderInput): { notes: NoteOut[]; state: VoiceSt
         note,
         vel: velocityFor(v, tr.accent, inp.feel, feelRng),
         voice: vi,
+        drum,
       });
     });
   });
