@@ -856,3 +856,198 @@ dialog.help::backdrop {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* ------------------------------------------------------------ floating windows (Sample Bank, Export Audio)
+   GEM-style application windows: title bar in the area ink, square frame, compact body. */
+.gwin {
+  position: fixed;
+  z-index: 1100;
+  max-height: calc(100vh - 16px);
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+}
+.gwin[hidden] {
+  display: none;
+}
+.gwin:focus {
+  outline: none;
+}
+.gwin-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 1px 3px 1px 8px;
+  cursor: move;
+  user-select: none;
+  touch-action: none;
+}
+.gwin-name {
+  flex: 1;
+  font-family: var(--title);
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gwin-close {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+  font-weight: bold;
+  width: 22px;
+  padding: 0;
+  flex: none;
+}
+.gwin-body {
+  padding: 6px;
+  overflow: auto;
+  min-height: 0;
+}
+.gwin h3 {
+  margin-top: 6px;
+}
+@media (max-width: 760px) {
+  .gwin {
+    left: 8px !important;
+    right: 8px;
+    top: 8px !important;
+    width: auto !important;
+  }
+  .gwin-title {
+    cursor: default;
+  }
+}
+
+/* sample bank */
+.slots {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+}
+.slots th {
+  font-family: var(--title);
+  font-weight: 400;
+  text-align: left;
+  border-bottom: 1px solid var(--ink);
+  padding: 1px 4px;
+  white-space: nowrap;
+}
+.slots td {
+  padding: 1px 4px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 20%, transparent);
+  white-space: nowrap;
+}
+.slots tr {
+  cursor: pointer;
+}
+.slots tr.sel td {
+  background: var(--ink);
+  color: var(--paper);
+}
+.slots tr.drop td {
+  outline: 2px dashed var(--selection);
+  outline-offset: -2px;
+}
+.slots td.sname {
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slots .warn {
+  color: var(--activity);
+}
+.slots tr.sel .warn {
+  color: var(--paper);
+}
+.slots tbody:focus {
+  outline: 2px solid var(--selection);
+}
+.slotdetail {
+  border-top: 1px solid var(--ink);
+  margin-top: 6px;
+  padding-top: 4px;
+}
+.slotdetail .field .val {
+  width: 6ch;
+}
+.wave {
+  display: block;
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--ink);
+  margin: 4px 0;
+}
+.wave .w {
+  fill: var(--ink);
+  fill-opacity: 0.5;
+}
+.wave .m {
+  stroke: var(--activity);
+  stroke-width: 1;
+}
+.wave .lp {
+  fill: var(--selection);
+  fill-opacity: 0.15;
+}
+.status {
+  font-size: 11px;
+  min-height: 1.3em;
+}
+.status.err {
+  color: var(--activity);
+  font-weight: bold;
+}
+.engrow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 2px 0;
+}
+.englabel {
+  border: 1px solid var(--ink);
+  padding: 0 5px;
+  min-width: 10ch;
+  font-family: var(--title);
+}
+details.xform summary {
+  cursor: pointer;
+  font-family: var(--title);
+  margin-top: 6px;
+}
+.progress {
+  height: 10px;
+  border: 1px solid var(--ink);
+  margin: 4px 0;
+}
+.progress > div {
+  height: 100%;
+  width: 0;
+  background: var(--ink);
+}
+.filelist {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0;
+  font-size: 11px;
+  max-height: 160px;
+  overflow: auto;
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+}
+.filelist li {
+  display: flex;
+  gap: 8px;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+.filelist .fname {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

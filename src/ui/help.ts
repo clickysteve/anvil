@@ -5,14 +5,14 @@ const SECTIONS: [string, string[]][] = [
   [
     'What ANVIL does',
     [
-      'ANVIL composes short musical themes from rules you set, makes variations of them, and plays them through up to six voices of accompaniment derived from the theme. It plays MIDI hardware or software instruments through Web MIDI, or its own small preview sound.',
+      'ANVIL composes short musical themes from rules you set, makes variations of them, and plays them through up to six voices of accompaniment derived from the theme. It plays MIDI hardware or software instruments through Web MIDI, and its own internal sound: a small synthesiser, or samples you load.',
       'Work flows left to right: set constraints, generate a theme, make variations, shape the accompaniment, play, keep what you like.',
     ],
   ],
   [
     'Quick start',
     [
-      '1. Choose a MIDI output in the MIDI tab (or switch on Audio preview).',
+      '1. Choose a MIDI output in the MIDI tab, or switch on INTERNAL AUDIO in the AUDIO tab.',
       '2. Press START (Space). Theme TA loops. Space again stops; Return pauses and resumes.',
       '3. Click another slot to queue it; it starts at the end of the current theme. Shift-click switches at once.',
       '4. Press G, double-click or right-click a slot to generate a new theme or variation there, using the current constraints.',
@@ -53,6 +53,36 @@ const SECTIONS: [string, string[]][] = [
     ],
   ],
   [
+    'Internal audio and MIDI',
+    [
+      'ANVIL always sends MIDI to the chosen output. Separately, it can play its own internal audio in the browser (AUDIO tab, INTERNAL AUDIO; the MIDI tab\'s AUDIO PREVIEW is the same switch). Internal audio is what the Sample Bank, the output processing and Export Audio work with. External MIDI instruments are never heard through, processed or rendered by ANVIL: to put them in a recording, record their audio separately.',
+      'Each voice plays either the internal SYNTH or a SAMPLE (AUDIO tab, VOICE SOURCES, or the Sample Bank). A voice set to SAMPLE plays the internal synth wherever its slot is empty, so it never goes silent by accident.',
+    ],
+  ],
+  [
+    'Sample Bank',
+    [
+      'SAMPLES (top right) opens the Sample Bank. There are thirteen slots: V1-V6 for voices 1-6, and D1-D7 for the seven drum-table entries. A voice playing a drum harmony (D1-D5) with its source set to SAMPLE takes each drum note from the slot of the drum-table entry that produced it, so one drum voice can play a whole kit. Drum slots are shared by all drum voices.',
+      'Click a slot to select it, then LOAD, or drop an audio file onto any slot. WAV and AIFF are read exactly; MP3, OGG, FLAC, M4A and others go through the browser\'s decoder. Files up to 40 MB and 120 s. Samples stay in this browser (nothing is uploaded) and survive reloads.',
+      'ROOT is the note at which the sample plays at its original speed (C4 = middle C): higher notes play it faster and higher, lower notes slower and lower, as on a hardware sampler. TUNE and FINE shift it. VOL (100 = unity), PAN, VEL (how much ANVIL\'s velocities change the level).',
+      'MODE: ONE SHOT plays the whole sample (drums); GATED plays while the note is held, then fades over REL; LOOP repeats LOOP-TO while held. START and END trim the sample; SNAP moves the points to zero crossings to avoid clicks. MUTE silences a slot in the internal audio only. AUDITION (or A in the slot list) plays the root note through the voice\'s processing.',
+      'SAMPLE TRANSFORM reworks the sample\'s audio once, with The Good Bits\' STRETCH FX chain: a stretch character (Clean, Vintage, Cyclic, Tape, Grain... the Good Bits names), stretch ratio, varispeed pitch, reverse, drive and crunch. The original stays stored; the result is cached and recomputed only when the settings change. PURGE UNUSED removes stored samples no saved project uses.',
+    ],
+  ],
+  [
+    'Output engine',
+    [
+      'The AUDIO tab\'s OUTPUT ENGINE processes audio while it plays (and identically in exports), per voice (V1-V6) and on the master. It is The Good Bits\' output processing: OUTPUT STAGE (Cassette, Reel-to-Reel, Damaged, Vinyl, Boombox, AM Radio, VHS Hi-Fi, Bus Comp, Lathe, Phone Bus), DRIVE (Tape, Tube, Diode, Fuzz) and CRUNCH (bit depth and sample-rate reduction, with no anti-alias filter: the aliasing is part of the sound), plus input and output gain and a TONE low-pass. PRESET gives starting points such as 12-BIT; BYPASS keeps the settings but passes audio unchanged. CLEAN leaves the sound exactly as it is.',
+    ],
+  ],
+  [
+    'Export audio',
+    [
+      'EXPORT (top right) renders WAV files (44.1 kHz, 16-bit, stereo): an ITEM (a theme or a variation, for a number of passes) or the ARRANGEMENT once through, exactly as START or PLAY ARRANGER plays it (the same random choices). It never interrupts playback or changes the project.',
+      'OUTPUT: the MASTER mix, one STEM per voice, or both (several files come as one ZIP). Every file starts at the same moment, has the same length (the music plus the shared TAIL) and is never trimmed or normalised, so stems line up in a DAW. BAKE PROCESSING INTO STEMS puts each voice\'s own processing in its stem; master processing is applied to the master file only. Summing the stems rebuilds the mix before master processing; a non-linear master processor cannot be rebuilt from stems.',
+    ],
+  ],
+  [
     'Classic and Extended',
     [
       'Classic mode is ANVIL\'s reconstruction of the original instrument\'s documented and observed behaviour. Extended mode adds new tools on the same engine: regenerate only rhythm, pitches or accents, lock notes, keep the melodic contour, mutate, type a seed, and compare two items. Switching mode never changes your music.',
@@ -62,12 +92,13 @@ const SECTIONS: [string, string[]][] = [
     'Saving',
     [
       'Your work is saved in this browser automatically. Save in browser keeps a named copy; Download writes a project file you can open later with Open file. Export MIDI writes a Standard MIDI File of what ANVIL plays.',
+      'Project files refer to samples but never contain them. DOWNLOAD BUNDLE writes one .anvilpack file with the project and every sample it uses (each once); OPEN FILE reads it on another computer. A project opened without its samples shows them as MISSING until you load them again; those voices play the synth meanwhile.',
     ],
   ],
   [
     'Keyboard',
     [
-      'Space start / stop - Return pause / continue (starts when stopped) - Esc stop and reset - Shift+Esc panic - G generate the viewed slot - arrows in the slot grid move, Return on a slot plays it - ? help.',
+      'Space start / stop - Return pause / continue (starts when stopped) - Esc stop and reset (or close the window in use) - Shift+Esc panic - G generate the viewed slot - arrows in the slot grid move, Return on a slot plays it - in the Sample Bank list, Up/Down select and A auditions - ? help.',
     ],
   ],
   [

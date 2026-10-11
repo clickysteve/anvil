@@ -15,6 +15,10 @@ import { applyPalette, contrastWarnings, PaletteLibrary, ROLE_INFO, ROLES, type 
 import { drawTheme } from './themeView';
 import { RollView } from './roll';
 import { button, group, numField, panel, presetStrip, selectField, toggle } from './widgets';
+import { audioPanel } from './audioPanel';
+import { exportWindow } from './exportWindow';
+import { sampleBankWindow } from './sampleBank';
+import { focusedWindow } from './window';
 
 const STATE_TEXT = { stopped: 'STOPPED', running: 'RUNNING', paused: 'PAUSED', armed: 'ARMED' } as const;
 const EXT_TEXT = { off: '', waiting: 'WAITING', detected: 'CLOCK DETECTED', running: 'RUNNING', stopped: 'STOPPED', lost: 'CLOCK LOST' } as const;
@@ -22,6 +26,12 @@ const EXT_TEXT = { off: '', waiting: 'WAITING', detected: 'CLOCK DETECTED', runn
 export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary): void {
   const p = () => s.project;
   const help = helpDialog();
+  const exportWin = exportWindow(s);
+  const bankWin = sampleBankWindow(s, (t) => {
+    s.setPrefs({ sideTab: 'audio' });
+    audio.target(t);
+  });
+  const audio = audioPanel(s, { bank: () => bankWin.open(), export: () => exportWin.open() });
 
   const applyCurrentPalette = () => applyPalette(palettes.find(s.prefs.palette).colors);
   applyCurrentPalette();
@@ -70,6 +80,8 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
       },
       testid: 'palette',
     }),
+    button('SAMPLES', 'Sample Bank: load samples for the voices and drum table', () => bankWin.toggle(), { 'data-testid': 'open-samples' }),
+    button('EXPORT', 'Export Audio: render WAV files and stems', () => exportWin.toggle(), { 'data-testid': 'open-export-audio' }),
     button('?', 'Help (?)', () => help.showModal(), { class: 'helpbtn', 'aria-label': 'Help', 'data-testid': 'help' }),
   );
 
@@ -538,6 +550,7 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
     monitorList.replaceChildren(...items.map((e) => h('li', { class: e.dir }, h('span', { class: 'dir' }, e.dir === 'in' ? 'IN ' : 'OUT'), h('span', { class: 'hex' }, e.hex), h('span', {}, e.text))));
   };
   addTab('midi', 'MIDI', 'midi', midiTab);
+  addTab('audio', 'AUDIO', 'midi', audio.el);
 
   // Weights tab
   const weightsGrid = h('div', { class: 'weights', 'data-testid': 'weights' });
@@ -635,12 +648,13 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
   );
 
   // Project tab
-  const fileInput = h('input', { type: 'file', accept: '.json,.anvil.json,application/json', hidden: true, 'data-testid': 'file-input' });
+  const fileInput = h('input', { type: 'file', accept: '.json,.anvil.json,.anvilpack,.zip,application/json,application/zip', hidden: true, 'data-testid': 'file-input' });
   fileInput.addEventListener('change', async () => {
     const f = fileInput.files?.[0];
     if (!f) return;
     try {
-      s.importText(await f.text());
+      if (/\.(anvilpack|zip)$/i.test(f.name)) await s.openBundle(new Uint8Array(await f.arrayBuffer()));
+      else s.importText(await f.text());
     } catch (e) {
       s.say(`Could not open the file: ${e instanceof Error ? e.message : e}`);
     }
@@ -676,7 +690,12 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
         { class: 'row wrap' },
         button('SAVE IN BROWSER', 'Keep a named copy in this browser', () => { s.saveToLibrary(); renderLibrary(); }, { 'data-testid': 'save-browser' }),
         button('DOWNLOAD', 'Download the project as a file', () => download(s.fileName(), s.serialize(), 'application/json'), { 'data-testid': 'download' }),
-        button('OPEN FILE', 'Open a project file', () => fileInput.click(), { 'data-testid': 'open-file' }),
+        button('OPEN FILE', 'Open a project file or a portable bundle (.anvilpack)', () => fileInput.click(), { 'data-testid': 'open-file' }),
+        button('DOWNLOAD BUNDLE', 'Download the project with its samples as one portable .anvilpack file', async () => {
+          const b = await s.bundle();
+          download(b.name, b.bytes as BlobPart, 'application/zip');
+          s.say(`Downloaded ${b.name}${b.missing.length ? ` without ${b.missing.length} missing sample${b.missing.length > 1 ? 's' : ''} (${b.missing.join(', ')})` : ''}.`);
+        }, { 'data-testid': 'download-bundle' }),
         button('NEW', 'Start a new project (the current one stays autosaved until you change the new one)', () => s.newProject(), { 'data-testid': 'new-project' }),
         fileInput,
       ),
@@ -851,6 +870,8 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
     voices,
     footer,
     editorWin,
+    bankWin.el,
+    exportWin.el,
     help,
   );
   root.classList.add('anvil');
@@ -907,6 +928,12 @@ export function mountApp(root: HTMLElement, s: Session, palettes: PaletteLibrary
   });
   document.addEventListener('keydown', (e) => {
     if (help.open) return;
+    const fw = focusedWindow();
+    if (fw && e.key === 'Escape') {
+      e.preventDefault();
+      fw.close();
+      return;
+    }
     if (editorOpen && e.key === 'Escape') {
       e.preventDefault();
       closeEditor();
