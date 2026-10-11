@@ -40,7 +40,7 @@ describe('project format', () => {
     const p = newProject(99);
     const o = JSON.parse(serializeProject(p));
     expect(o.format).toBe('anvil-project');
-    expect(o.version).toBe(1);
+    expect(o.version).toBe(2);
     expect(o.mode).toBe('classic');
     expect(o.seed).toBe(99);
     expect(o.algorithms.harmonyInversion).toBe('classic.harmony.inversion.v1');

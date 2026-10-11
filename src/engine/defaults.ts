@@ -4,9 +4,10 @@
 import { CURRENT_ALGORITHMS } from './algorithms';
 import { defaultUserScale } from './tonality';
 import type { Options, Project, TVParams, Voice } from './types';
+import { defaultAudio } from '../audio/settings';
 
 export const FORMAT = 'anvil-project';
-export const FORMAT_VERSION = 1;
+export const FORMAT_VERSION = 2;
 
 export function defaultParams(): TVParams {
   return {
@@ -107,6 +108,7 @@ export function newProject(seed: number, name = 'Untitled'): Project {
     options: defaultOptions(),
     arranger: { steps: [], enable: { theme: true, preset: true, mode: true, scale: true, keyOctave: true } },
     extended: { locks: {}, mutationDepth: 30, preserveContour: false },
+    audio: defaultAudio(),
     notes: '',
   };
 }

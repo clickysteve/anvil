@@ -1,7 +1,9 @@
 /**
  * The ANVIL project file format: versioned JSON.
  *
- *   { "format": "anvil-project", "version": 1, ... }
+ *   { "format": "anvil-project", "version": 2, ... }
+ *
+ * Version 2 added `audio` (sample slots, voice sources, output processing).
  *
  * Loading validates every field and repairs what it can (out-of-range numbers are clamped,
  * missing fields take defaults, damaged themes are dropped), reporting each repair as a
@@ -13,6 +15,7 @@ import { defaultDrums, defaultOptions, defaultParams, defaultVoice, defaultWeigh
 import { DEGREES, defaultUserScale, SCALE_COUNT } from '../engine/tonality';
 import type { Accent, Align, ArrangerStep, Cell, ItemId, Origin, Project, Theme, ThemeEvent, TVParams, Voice } from '../engine/types';
 import { ITEM_IDS } from '../engine/types';
+import { defaultAudio, repairAudio } from '../audio/settings';
 
 export class ProjectError extends Error {}
 
@@ -21,7 +24,11 @@ const isObj = (v: unknown): v is Obj => !!v && typeof v === 'object' && !Array.i
 
 /** Migration from version n to n + 1, keyed by n. */
 export type Migration = (o: Obj) => Obj;
-export const MIGRATIONS: Record<number, Migration> = {};
+export const MIGRATIONS: Record<number, Migration> = {
+  // format 2 adds internal audio settings; every voice stays on the internal synth, every
+  // processor CLEAN, every sample slot empty, so a format 1 project sounds exactly as before
+  1: (o) => ({ ...o, version: 2, audio: defaultAudio() }),
+};
 
 export function serializeProject(p: Project): string {
   return JSON.stringify(p, null, 1);
@@ -319,6 +326,7 @@ export function loadProject(raw: unknown, migrations: Record<number, Migration> 
     mutationDepth: num(ex.mutationDepth, 0, 100, 30, warn, 'Mutation depth'),
     preserveContour: bool(ex.preserveContour, false),
   };
+  p.audio = repairAudio(o.audio, warn);
   p.notes = typeof o.notes === 'string' ? o.notes.slice(0, 20000) : '';
   return { project: p, warnings };
 }

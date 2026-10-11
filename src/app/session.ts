@@ -12,7 +12,19 @@ import { copyTheme, generateTheme, generateVariation, isVariation, rowTheme } fr
 import type { ArrangerStep, ItemId, Mode, Project, Theme, Tonality, TVParams, Voice } from '../engine/types';
 import { ITEM_IDS } from '../engine/types';
 import { mutate, regenerateAccents, regeneratePitches, regenerateRhythm, toggleLock } from '../extended/extended';
-import { AudioPreview } from '../audio/preview';
+import { makeBundle, unpackBundle } from '../audio/bundle';
+import { exportAudio, type AudioExportOptions, type ExportResult } from '../audio/exportAudio';
+import { SampleLibrary } from '../audio/library';
+import { LiveAudio } from '../audio/live';
+import { referencedSamples, SLOT_COUNT, slotLabel, type SampleSlot, type VoiceSource } from '../audio/settings';
+import type { TransformRunner } from '../core/dsp/transform/cache';
+import type { AudioData } from '../core/dsp/transform/transform';
+import type { OutputFxSettings } from '../core/dsp/output/settings';
+import type { DecodedSample } from '../core/sampler/decode';
+import type { SampleZone } from '../core/sampler/zone';
+import type { SampleTransform } from '../core/dsp/transform/settings';
+import { IndexedDbSampleStore, type SampleStore } from '../core/storage/samples';
+import { HARMONY_DRUM_BASE } from '../engine/types';
 import { MidiMonitor } from '../midi/monitor';
 import { OutputRouter } from '../midi/router';
 import { exportSmf, type ExportOptions } from '../midi/smf';
@@ -24,7 +36,16 @@ import { Transport, type ClockSource } from '../transport/transport';
 import { findDemo } from './demos';
 import { loadPrefs, savePrefs, type AppPrefs, type PrefStore } from './prefs';
 
-export type Change = 'project' | 'bank' | 'params' | 'voices' | 'tonality' | 'transport' | 'midi' | 'prefs' | 'arranger' | 'notice' | 'mode';
+export type Change = 'project' | 'bank' | 'params' | 'voices' | 'tonality' | 'transport' | 'midi' | 'prefs' | 'arranger' | 'notice' | 'mode' | 'audio' | 'samples';
+
+/** Sample storage for this browser (IndexedDB), or null where IndexedDB is unavailable. */
+export function defaultSampleStore(): SampleStore | null {
+  try {
+    return typeof indexedDB === 'undefined' ? null : new IndexedDbSampleStore('anvil-samples');
+  } catch {
+    return null;
+  }
+}
 
 export interface SessionDeps {
   time?: TimeSource;
@@ -33,6 +54,15 @@ export interface SessionDeps {
   midi?: MidiAccess;
   /** seed source for new projects (tests pass a fixed one) */
   seed?: () => number;
+  /** browser-local sample storage (default: IndexedDB "anvil-samples") */
+  sampleStore?: SampleStore | null;
+  /** where sample transformations run (default: synchronously) */
+  transformRunner?: TransformRunner;
+  /** URL of the output-processor worklet (default: none, so processing is unavailable) */
+  workletUrl?: string | null;
+  /** test hooks for environments without Web Audio */
+  makeBuffer?: (audio: AudioData) => AudioBuffer;
+  decode?: (bytes: ArrayBuffer, name: string) => Promise<DecodedSample>;
 }
 
 export class Session {
@@ -58,7 +88,10 @@ export class Session {
   readonly seq: Sequencer;
   readonly transport: Transport;
   readonly monitor = new MidiMonitor();
-  readonly preview = new AudioPreview();
+  /** live internal audio (the internal synth and samples) */
+  readonly preview: LiveAudio;
+  readonly library: SampleLibrary;
+  readonly workletUrl: string | null;
   private listeners = new Set<(c: Change) => void>();
   private autosaveTimer: unknown = null;
   private newSeed: () => number;
@@ -87,7 +120,12 @@ export class Session {
       onArrangerStep: () => this.emit('arranger'),
     };
     this.router.addListener((b, t, d, port) => this.monitor.record(b, t, d, port));
-    this.router.addListener(this.preview.handle);
+    this.library = new SampleLibrary({ store: deps.sampleStore === undefined ? defaultSampleStore() : deps.sampleStore, runner: deps.transformRunner, makeBuffer: deps.makeBuffer, decode: deps.decode });
+    this.library.onChange = () => this.emit('samples');
+    this.workletUrl = deps.workletUrl ?? null;
+    this.preview = new LiveAudio(() => this.project.audio, this.library, this.workletUrl);
+    this.transport.audio = this.preview;
+    this.library.sync(this.project.audio);
     this.transport.setTempo(this.project.tempo);
     this.transport.clockOut = this.prefs.clockOut;
     this.focus = this.project.selected;
@@ -109,7 +147,7 @@ export class Session {
 
   emit(c: Change): void {
     for (const l of this.listeners) l(c);
-    if (c !== 'transport' && c !== 'midi' && c !== 'notice' && c !== 'prefs') this.scheduleAutosave();
+    if (c !== 'transport' && c !== 'midi' && c !== 'notice' && c !== 'prefs' && c !== 'samples') this.scheduleAutosave();
   }
 
   say(msg: string): void {
@@ -614,9 +652,12 @@ export class Session {
     this.lastPreset = null;
     this.transport.setTempo(p.tempo);
     this.seq.reset();
+    this.library.sync(p.audio);
+    this.preview.sync();
     this.emit('project');
     this.emit('bank');
     this.emit('mode');
+    this.emit('audio');
     this.saveNow();
   }
 
@@ -678,6 +719,130 @@ export class Session {
   /** Clone the project through the file format (used by tests and duplicate). */
   roundTrip(): LoadResult {
     return loadProject(JSON.parse(this.serialize()));
+  }
+
+  // ------------------------------------------------------------------ internal audio, samples, export
+
+  private audioChanged(): void {
+    this.library.sync(this.project.audio);
+    this.preview.sync();
+    this.emit('audio');
+  }
+
+  setVoiceSource(i: number, source: VoiceSource): void {
+    const a = this.project.audio;
+    this.project.audio = { ...a, voices: a.voices.map((v, n) => (n === i ? { ...v, source } : v)) };
+    this.audioChanged();
+  }
+
+  setVoiceFx(i: number, fx: OutputFxSettings): void {
+    const a = this.project.audio;
+    this.project.audio = { ...a, voices: a.voices.map((v, n) => (n === i ? { ...v, fx } : v)) };
+    this.audioChanged();
+  }
+
+  setMasterFx(fx: OutputFxSettings): void {
+    this.project.audio = { ...this.project.audio, master: fx };
+    this.audioChanged();
+  }
+
+  private setSlot(slot: number, patch: Partial<SampleSlot>): void {
+    const a = this.project.audio;
+    this.project.audio = { ...a, slots: a.slots.map((x, n) => (n === slot ? { ...x, ...patch } : x)) };
+    this.audioChanged();
+  }
+
+  setSlotZone(slot: number, patch: Partial<SampleZone>): void {
+    this.setSlot(slot, { zone: { ...this.project.audio.slots[slot].zone, ...patch } });
+  }
+
+  setSlotTransform(slot: number, patch: Partial<SampleTransform>): void {
+    this.setSlot(slot, { transform: { ...this.project.audio.slots[slot].transform, ...patch } });
+  }
+
+  clearSlot(slot: number): void {
+    const a = this.project.audio.slots[slot];
+    if (!a.sampleId) return;
+    this.setSlot(slot, { sampleId: null, name: '' });
+    this.say(`Cleared sample slot ${slotLabel(slot)}.`);
+  }
+
+  /**
+   * Decode, validate, store and assign a user file to a slot. Never throws: a bad file leaves
+   * the slot (and the running audio) as it was and reports why. Returns true on success.
+   */
+  async loadSample(slot: number, file: { bytes: ArrayBuffer; name: string; type?: string }): Promise<boolean> {
+    if (slot < 0 || slot >= SLOT_COUNT) return false;
+    try {
+      const r = await this.library.importFile(file.bytes, file.name, file.type ?? '');
+      this.library.retry();
+      this.setSlot(slot, { sampleId: r.id, name: r.name });
+      await this.library.ready();
+      const st = this.library.state(slot);
+      if (st.status === 'error') {
+        this.say(`Could not load "${file.name}": ${st.message}`);
+        return false;
+      }
+      this.say(`Loaded "${file.name}" into ${slotLabel(slot)}${r.warnings.length ? ` (${r.warnings.join(' ')})` : ''}.`);
+      return true;
+    } catch (e) {
+      this.say(`Could not load "${file.name}": ${e instanceof Error ? e.message : String(e)}`);
+      return false;
+    }
+  }
+
+  /** Play a slot's sample at its root note (switches internal audio on: call from a click). */
+  async audition(slot: number): Promise<boolean> {
+    if (!this.preview.enabled) await this.setAudioPreview(true);
+    if (!this.preview.enabled) return false;
+    await this.library.ready();
+    const ok = this.preview.audition(slot, this.project.voices.map((v) => ({ harmonyIsDrum: v.harmony >= HARMONY_DRUM_BASE })));
+    if (!ok) this.say(`Slot ${slotLabel(slot)} has no playable sample.`);
+    return ok;
+  }
+
+  /** Delete stored samples no saved project in this browser refers to. Returns how many. */
+  async purgeUnusedSamples(): Promise<number> {
+    const store = this.library.store;
+    if (!store) return 0;
+    const used = new Set(referencedSamples(this.project.audio));
+    const projects = [this.storage.loadAutosave(), ...this.storage.library().map((e) => {
+      try {
+        return this.storage.loadNamed(e.id);
+      } catch {
+        return null;
+      }
+    })];
+    for (const r of projects) if (r) for (const id of referencedSamples(r.project.audio)) used.add(id);
+    let n = 0;
+    for (const m of await store.list()) {
+      if (used.has(m.id)) continue;
+      await store.delete(m.id);
+      this.library.forget(m.id);
+      n++;
+    }
+    this.say(n ? `Removed ${n} unused sample${n > 1 ? 's' : ''} from this browser.` : 'No unused samples.');
+    return n;
+  }
+
+  /** Render audio for the export window. Does not change the project, transport or MIDI. */
+  async exportAudio(opts: AudioExportOptions, onProgress?: (f: number, stage: string) => void, signal?: AbortSignal): Promise<ExportResult> {
+    return exportAudio(this.project, this.library, opts, { workletUrl: this.workletUrl, onProgress, signal });
+  }
+
+  /** A portable bundle of the project and its samples. */
+  async bundle(): Promise<{ name: string; bytes: Uint8Array; missing: string[] }> {
+    return makeBundle(this.project, this.library.store);
+  }
+
+  /** Open a portable bundle: store its samples, then open its project. */
+  async openBundle(bytes: Uint8Array): Promise<void> {
+    const b = await unpackBundle(bytes, this.library.store);
+    this.library.retry();
+    const r = parseProject(b.projectText);
+    this.replaceProject(r.project, [...b.problems, ...r.warnings]);
+    await this.library.ready();
+    this.say(`Opened bundle "${r.project.name}" with ${b.stored} sample${b.stored === 1 ? '' : 's'}${b.problems.length ? ` (${b.problems.length} problem${b.problems.length > 1 ? 's' : ''})` : ''}.`);
   }
 
   // ------------------------------------------------------------------ MIDI devices
@@ -760,6 +925,7 @@ export class Session {
 
   async setAudioPreview(on: boolean): Promise<void> {
     if (on) {
+      this.preview.setVolume(this.prefs.previewVolume);
       const ok = await this.preview.enable();
       if (!ok) this.say('Audio preview is not available in this browser.');
       this.setPrefs({ audioPreview: ok });

@@ -25,6 +25,18 @@ import { ExternalClock, InternalClock, type ExternalStatus, type TimeSource } fr
 export type TransportState = 'stopped' | 'running' | 'paused' | 'armed';
 export type ClockSource = 'internal' | 'external';
 
+/**
+ * Internal audio fed beside MIDI: every sequencer event (with its voice), and the moments
+ * notes must end. Optional; MIDI output never depends on it.
+ */
+export interface AudioSink {
+  note(e: SeqEvent, time: number): void;
+  allNotesOff(time: number): void;
+  panic(time: number): void;
+  /** a performance started at `time` (processors restart their state) */
+  started?(time: number): void;
+}
+
 export interface TransportListener {
   onState?(s: TransportState): void;
   onTick?(): void;
@@ -40,6 +52,8 @@ export class Transport {
   readonly internal: InternalClock;
   readonly external: ExternalClock;
   listener: TransportListener = {};
+  /** internal audio, fed the same events as MIDI */
+  audio: AudioSink | null = null;
   /** clock ticks processed since START (for display) */
   ticks = 0;
   /** times of recently scheduled internal clocks */
@@ -108,6 +122,7 @@ export class Transport {
     const t0 = Math.max(now + this.internal.startDelayMs, end + 2);
     if (this.clockOutActive) this.router.realtime(START, t0 - 1);
     this.sendPrograms(t0 - 1);
+    this.audio?.started?.(t0);
     this.setState('running');
     this.internal.start(t0);
   }
@@ -177,6 +192,7 @@ export class Transport {
     const now = this.time.now();
     this.seq.silence();
     this.router.panic(now);
+    this.audio?.panic(now);
   }
 
   setSource(src: ClockSource): void {
@@ -222,12 +238,14 @@ export class Transport {
     for (const e of events) {
       if (e.kind === 'off') this.router.noteOff(e.ch, e.note, time);
       else this.router.noteOn(e.ch, e.note, e.vel, time);
+      this.audio?.note(e, time);
     }
   }
 
   private silenceAt(time: number): void {
     this.dispatch(this.seq.silence(), time);
     this.router.allNotesOff(time);
+    this.audio?.allNotesOff(time);
   }
 
   private sendPrograms(time: number): void {
@@ -245,6 +263,7 @@ export class Transport {
     this.ticks = 0;
     this.armed = null;
     this.sendPrograms(time);
+    this.audio?.started?.(time);
     this.setState('running');
   }
 
