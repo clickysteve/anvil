@@ -5,7 +5,7 @@
  */
 import type { Session } from '../app/session';
 import { defaultExportOptions, planExport, type AudioExportOptions, type ExportOutputs } from '../audio/exportAudio';
-import { RenderCancelled } from '../core/render/offline';
+import { RenderCancelled } from '@slopfactory/core/render';
 import { isVariation } from '../engine/theme';
 import { ITEM_IDS, type ItemId } from '../engine/types';
 import { bind, download, h, refreshAll } from './dom';

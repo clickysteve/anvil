@@ -1,7 +1,25 @@
 # DOWNBEAT integration plan
 
-How DOWNBEAT (<https://github.com/clickysteve/downbeat>, read at `07e31b0`) will adopt Slop
-Factory Core. **Plan only: nothing in DOWNBEAT has been changed.** The goal is that sampling,
+How DOWNBEAT (<https://github.com/clickysteve/downbeat>, read at `07e31b0`) would adopt Slop
+Factory Core.
+
+**Status: done**, on DOWNBEAT's `claude/downbeat-core-audio` branch, with Core 0.2.0 (see
+DOWNBEAT's `docs/AUDIO.md`). Where the result differs from the plan below:
+
+* **Drum sounds are sound steps.** A drum sound is one sound step of one voice (the note or chord
+  it sends), not one sample per voice: a voice plays several drum sounds and fills borrow other
+  voices' drum sounds. Every engine note now names its step, so the drum sound is explicit.
+* **Timing is not whole fine units.** Swing, groove templates and humanise place notes between
+  fine units, so DOWNBEAT uses 96 000 Core ticks per quarter (4 000 per engine tick), not 96.
+* **Two kinds of stems**: per sequencer voice (with voice processing) and per drum sound (with
+  only the sound's own processing; voice processing cannot be split exactly by sound).
+* **The master compressor** stays DOWNBEAT's own (not Good Bits' Bus Comp). Core gained
+  `masterInsert`, `masterLatencyFrames` (the compressor's 6 ms look-ahead is removed so the
+  master lines up with the stems) and `preRollSeconds` (a fresh compressor settles first).
+* **Choke groups** landed in Core 0.2.0; DOWNBEAT's AUTO setting reproduces its original closed
+  hat / open hat choke on top of them.
+
+The original plan follows. The goal is that sampling,
 processing and stem export in DOWNBEAT take a fraction of the work they took in ANVIL, because
 the hard parts (sample engine, processing, offline rendering, WAV/ZIP, storage, bundles) are
 now in Core.

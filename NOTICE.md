@@ -11,6 +11,6 @@ the copyright, licensing or availability of the original software.
 
 Third-party fonts (Tiny5, Silkscreen) are used under the SIL Open Font License 1.1.
 
-DSP code from The Good Bits (same author, MIT) is vendored unchanged in
-`src/core/dsp/vendor/goodbits/`, with its own licence file.
+ANVIL depends on Slop Factory Core (`@slopfactory/core`, same author, MIT), which vendors DSP
+code from The Good Bits (same author, MIT) unchanged, with its own licence file.
 See `docs/PROVENANCE.md` for details.

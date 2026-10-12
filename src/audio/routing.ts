@@ -3,9 +3,9 @@
  * voice strips (fixed mix headroom, per-voice processing). Shared by live playback and export,
  * so both make the same decisions.
  */
-import type { Instrument } from '../core/audio/instrument';
-import type { StripSettings } from '../core/audio/mixer';
-import type { ResolveInstrument } from '../core/audio/player';
+import type { Instrument } from '@slopfactory/core/audio';
+import type { StripSettings } from '@slopfactory/core/audio';
+import type { ResolveInstrument } from '@slopfactory/core/audio';
 import { drumIndexOf, voiceId, voiceIndex, VOICE_COUNT } from './anvilTimeline';
 import type { SampleLibrary } from './library';
 import { drumSlot, type ProjectAudio } from './settings';

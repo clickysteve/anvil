@@ -6,10 +6,10 @@ import { SampleLibrary } from '../src/audio/library';
 import { makeResolver, slotFor } from '../src/audio/routing';
 import { defaultAudio, drumSlot, referencedSamples, repairAudio } from '../src/audio/settings';
 import { AnvilSynth } from '../src/audio/synth';
-import { encodeWav } from '../src/core/dsp/vendor/goodbits/js/audio-codec.js';
-import { FX_PRESETS, cleanFx } from '../src/core/dsp/output/settings';
-import { SampleInstrument } from '../src/core/sampler/instrument';
-import { MemorySampleStore, sampleFromBytes } from '../src/core/storage/samples';
+import { FX_PRESETS, cleanFx } from '@slopfactory/core/dsp';
+import { encodeWav16 } from '@slopfactory/core/export';
+import { SampleInstrument } from '@slopfactory/core/sampler';
+import { MemorySampleStore, sampleFromBytes } from '@slopfactory/core/storage';
 import { newProject } from '../src/engine/defaults';
 import { generateTheme } from '../src/engine/theme';
 import { Sequencer, type SeqEvent } from '../src/engine/sequencer';
@@ -17,14 +17,14 @@ import { OutputRouter } from '../src/midi/router';
 import { loadProject, parseProject, serializeProject } from '../src/persistence/format';
 import { Transport } from '../src/transport/transport';
 import { FakePort, FakeTime } from './helpers';
-import type { AudioData } from '../src/core/dsp/transform/transform';
+import type { AudioData } from '@slopfactory/core/dsp';
 
 const fakeBuffer = (a: AudioData) => ({ sampleRate: a.sampleRate, length: a.channels[0].length, numberOfChannels: a.channels.length, duration: a.channels[0].length / a.sampleRate, getChannelData: (i: number) => a.channels[i] }) as unknown as AudioBuffer;
 
 async function wavBytes(seconds = 0.2, freq = 220): Promise<ArrayBuffer> {
   const n = Math.round(seconds * 44100);
   const ch = Float32Array.from({ length: n }, (_, i) => 0.5 * Math.sin((2 * Math.PI * freq * i) / 44100));
-  return encodeWav([ch, ch], 44100, 16).arrayBuffer();
+  return (await encodeWav16([ch, ch], 44100)).slice().buffer;
 }
 
 function memKV() {

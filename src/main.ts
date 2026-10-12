@@ -4,11 +4,11 @@ import { mountApp } from './ui/app';
 import { PaletteLibrary } from './ui/palette';
 import { defaultStore } from './persistence/storage';
 import { OUTPUT_FX_WORKLET_URL } from './audio/workletUrl';
-import { WorkerTransformRunner } from './core/dsp/transform/cache';
-import TransformWorker from './core/dsp/transform/worker.ts?worker';
+import { WorkerTransformRunner } from '@slopfactory/core/dsp';
+import transformWorkerUrl from '@slopfactory/core/transform-worker.js?url';
 
 const root = document.getElementById('app')!;
-const runner = typeof Worker === 'undefined' ? undefined : new WorkerTransformRunner(() => new TransformWorker());
+const runner = typeof Worker === 'undefined' ? undefined : new WorkerTransformRunner(() => new Worker(transformWorkerUrl, { type: 'module' }));
 const session = new Session({ workletUrl: OUTPUT_FX_WORKLET_URL, transformRunner: runner });
 mountApp(root, session, new PaletteLibrary(defaultStore()));
 void session.initMidi();

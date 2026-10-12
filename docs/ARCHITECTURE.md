@@ -25,10 +25,9 @@ src/midi/
   webmidi.ts      Web MIDI access wrapper
   monitor.ts      bounded MIDI log with clock aggregation
   smf.ts          Standard MIDI File export (and a minimal reader for tests)
-src/audio/        ANVIL's internal audio on Slop Factory Core: settings, synth instrument,
-                  live audio, sample library, routing, export, bundles
-src/core/         Slop Factory Core: shared events, sampler, mixer, Good Bits DSP, offline
-                  rendering, WAV/ZIP, sample storage (no ANVIL imports; see SLOP-FACTORY-CORE.md)
+src/audio/        ANVIL's internal audio on Slop Factory Core (the @slopfactory/core
+                  package): settings, synth instrument, live audio, sample library,
+                  routing, export, bundles
 src/persistence/  project format, validation/repair/migration, browser storage
 src/app/          Session (all user actions), preferences, demos
 src/ui/           DOM interface, palettes, theme drawing, help, Sample Bank / Export windows
@@ -159,6 +158,6 @@ ports, clock settings, palette) are stored separately and never in projects.
   and `/`, with a simulated Web MIDI implementation injected before load. They include the
   Sample Bank, processing, export and bundle tests (`e2e/audio.spec.ts`) and the measured audio
   verification (`e2e/audio-verify.spec.ts`, see [AUDIO-VERIFICATION.md](AUDIO-VERIFICATION.md)).
-- `test/core/`: Slop Factory Core's own unit tests (Good Bits parity, sampler and mixer against
-  a recording fake of Web Audio, WAV/ZIP, IndexedDB storage via fake-indexeddb, the boundary
-  rule).
+- Slop Factory Core's own tests (Good Bits parity, sampler, mixer, choke groups, WAV/ZIP,
+  storage, browser rendering) live in the Core repository. `test/core-package.test.ts` checks
+  that ANVIL uses the shared package (a pinned tag, no local copy of Core).

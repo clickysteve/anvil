@@ -36,19 +36,21 @@ material is kept outside this repository and its history.
 | Silkscreen font (via @fontsource/silkscreen) | SIL Open Font License 1.1 | fallback title face |
 | Vite, TypeScript, Vitest, Playwright, happy-dom | MIT / Apache-2.0 | build and tests only |
 | fake-indexeddb | Apache-2.0 | unit tests only (IndexedDB sample storage) |
-| The Good Bits DSP (`src/core/dsp/vendor/goodbits/`) | MIT, same author as ANVIL | output processing, sample transformations, WAV/AIFF codec |
+| Slop Factory Core (`@slopfactory/core`, installed from a git tag) | MIT, same author as ANVIL | internal audio: sampler, mixer, rendering, WAV/ZIP, storage |
+| The Good Bits DSP (vendored in Slop Factory Core) | MIT, same author as ANVIL | output processing, sample transformations, WAV/AIFF codec |
 
 ### The Good Bits
 
 DSP files from The Good Bits (<https://github.com/clickysteve/the-good-bits>, commit
-`928353c`) are vendored **verbatim**, keeping Good Bits' directory layout and its licence file.
-`vendor.json` records the commit and each file's SHA-256 of the upstream bytes, and
-`test/core/vendor.test.ts` fails if any vendored file differs. The only change is one appended
+`928353c`) are vendored **verbatim** in Slop Factory Core (`src/dsp/vendor/goodbits/` there;
+they were in ANVIL's `src/core/` before Core moved to its own repository), keeping Good Bits'
+directory layout and its licence file. `vendor.json` records the commit and each file's SHA-256
+of the upstream bytes, and Core's `test/vendor.test.ts` fails if any vendored file differs. The only change is one appended
 `export` line at the end of `outputstage.js` exposing four existing helpers; the upstream bytes
 above it are unchanged. Good Bits' runtime CDN dependencies (essentia.js, JSZip) are not used.
 Good Bits deliberately uses generic names for its algorithms; ANVIL keeps them and does not
 describe any processor as an emulation of a particular machine.
-See [GOOD-BITS-DSP-INVENTORY.md](GOOD-BITS-DSP-INVENTORY.md).
+See `docs/GOOD-BITS-DSP.md` in the Core repository.
 
 The colour palettes use the same semantic-role idea and palette names (Classic, Dark,
 Colour) as the other instruments in the same collection; ANVIL's palette code is its own.
@@ -57,11 +59,11 @@ Colour) as the other instruments in the same collection; ANVIL's palette code is
 
 Performed for this release (commands run against the working tree and history):
 
-- File types: only TypeScript, CSS, HTML, Markdown, JSON and configuration files, the
-  vendored Good Bits JavaScript and its licence (`src/core/dsp/vendor/goodbits/`), and the
-  one-line `public/CNAME` naming the site's domain. No binaries, images, audio, disk images,
+- File types: only TypeScript, CSS, HTML, Markdown, JSON and configuration files, and the
+  one-line `public/CNAME` naming the site's domain (the vendored Good Bits JavaScript now lives
+  in Slop Factory Core). No binaries, images, audio, disk images,
   `.PRG`, `.TUN`, `.MID`, ROM, PDF or archive files; test samples are generated in code.
-  (`git ls-files | grep -viE '\.(ts|css|html|md|json|mjs|yml|gitignore|npmrc)$|^LICENSE$|CNAME$|^src/core/dsp/vendor/goodbits/(LICENSE|.*\.js)$'` returns nothing.)
+  (`git ls-files | grep -viE '\.(ts|css|html|md|json|mjs|yml|gitignore|npmrc)$|^LICENSE$|CNAME$'` returns nothing.)
 - History: the same check over every commit (`git log --all --name-only`) finds no research
   artefacts.
 - Text: no passages from the original manual or help screens. Algorithm and option names

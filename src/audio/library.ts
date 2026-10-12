@@ -8,12 +8,12 @@
  * settings), and keeps one AudioBuffer per (sample, transformation). Live playback and offline
  * export use the same instruments and buffers.
  */
-import type { AudioData } from '../core/dsp/transform/transform';
-import { syncRunner, TransformCache, type TransformRunner } from '../core/dsp/transform/cache';
-import { transformKey } from '../core/dsp/transform/settings';
-import { decodeSample, SampleError, toAudioBuffer, type DecodedSample } from '../core/sampler/decode';
-import { SampleInstrument } from '../core/sampler/instrument';
-import { sampleFromBytes, StorageError, type SampleStore } from '../core/storage/samples';
+import type { AudioData } from '@slopfactory/core/dsp';
+import { syncRunner, TransformCache, type TransformRunner } from '@slopfactory/core/dsp';
+import { transformKey } from '@slopfactory/core/dsp';
+import { decodeSample, SampleError, toAudioBuffer, type DecodedSample } from '@slopfactory/core/sampler';
+import { SampleInstrument } from '@slopfactory/core/sampler';
+import { sampleFromBytes, StorageError, type SampleStore } from '@slopfactory/core/storage';
 import type { ProjectAudio, SampleSlot } from './settings';
 import { SLOT_COUNT } from './settings';
 

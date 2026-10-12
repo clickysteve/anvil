@@ -83,11 +83,12 @@ External MIDI instruments cannot be rendered by the browser: record them separat
 
 ## Slop Factory Core
 
-The audio, sampling, processing, rendering, export and storage code is built as **Slop
-Factory Core** (`src/core/`), shared infrastructure meant for the other instruments in the
-collection (DOWNBEAT next). It reuses The Good Bits' DSP verbatim and knows nothing about
-ANVIL. It currently lives in this repository; see [docs/SLOP-FACTORY-CORE.md](docs/SLOP-FACTORY-CORE.md)
-for its interfaces and the plan to move it into its own repository.
+ANVIL's audio, sampling, processing, rendering, export and storage come from **Slop Factory
+Core** (`@slopfactory/core`, <https://github.com/clickysteve/slopfactory-core>), the shared audio
+package of the instruments in the collection; DOWNBEAT uses the same version. It was first built
+here and now lives in its own repository; ANVIL installs a version tag of it and bundles it into
+its static build. Core reuses The Good Bits' DSP verbatim and knows nothing about ANVIL. See
+[docs/SLOP-FACTORY-CORE.md](docs/SLOP-FACTORY-CORE.md).
 
 ## MIDI setup
 
@@ -176,19 +177,19 @@ clock follower over USB, still needs to be checked on the devices themselves.
 - [docs/EXTENDED.md](docs/EXTENDED.md): Extended features and future extension points.
 - [docs/USER-GUIDE.md](docs/USER-GUIDE.md): samples, processing, export and bundles, step by step.
 - [docs/SAMPLE-AUDIO-ARCHITECTURE.md](docs/SAMPLE-AUDIO-ARCHITECTURE.md): ANVIL's audio system.
-- [docs/SLOP-FACTORY-CORE.md](docs/SLOP-FACTORY-CORE.md): the shared toolkit, interfaces, repository plan.
-- [docs/GOOD-BITS-DSP-INVENTORY.md](docs/GOOD-BITS-DSP-INVENTORY.md): every Good Bits algorithm by behaviour, and what is reused.
+- [docs/SLOP-FACTORY-CORE.md](docs/SLOP-FACTORY-CORE.md): the shared audio package ANVIL depends on, and how to upgrade it.
+- [docs/GOOD-BITS-DSP-INVENTORY.md](docs/GOOD-BITS-DSP-INVENTORY.md): where the Good Bits DSP inventory moved (Core).
 - [docs/AUDIO-VERIFICATION.md](docs/AUDIO-VERIFICATION.md): measured audio output.
-- [docs/MIDI-FOUNDATION.md](docs/MIDI-FOUNDATION.md): MIDI audit across the instruments and the shared-MIDI roadmap.
-- [docs/DOWNBEAT-INTEGRATION-PLAN.md](docs/DOWNBEAT-INTEGRATION-PLAN.md): how DOWNBEAT will adopt Core.
+- [docs/MIDI-FOUNDATION.md](docs/MIDI-FOUNDATION.md): where the MIDI audit and roadmap moved (Core).
+- [docs/DOWNBEAT-INTEGRATION-PLAN.md](docs/DOWNBEAT-INTEGRATION-PLAN.md): how DOWNBEAT adopted Core (the plan and what was done).
 - [docs/ROADMAP.md](docs/ROADMAP.md): what is planned.
 
 ## Licence
 
 ANVIL's own code and documentation are MIT licensed ([LICENSE](LICENSE)). The licence covers
 nothing else; see [NOTICE.md](NOTICE.md) for its scope and the non-affiliation statement.
-DSP code from The Good Bits (same author, MIT) is vendored unchanged in
-`src/core/dsp/vendor/goodbits/` with its own licence file.
+DSP code from The Good Bits (same author, MIT) reaches ANVIL through Slop Factory Core (MIT),
+which vendors it unchanged with its own licence file.
 
 ## Development
 

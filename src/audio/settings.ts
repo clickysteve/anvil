@@ -8,9 +8,9 @@
  * drum slot of the drum-table entry that produced it. Drum slots are shared by all drum voices,
  * but each voice keeps its own processing and stem.
  */
-import { cleanFx, repairFx, type OutputFxSettings } from '../core/dsp/output/settings';
-import { identityTransform, repairTransform, type SampleTransform } from '../core/dsp/transform/settings';
-import { defaultZone, repairZone, type SampleZone } from '../core/sampler/zone';
+import { cleanFx, repairFx, type OutputFxSettings } from '@slopfactory/core/dsp';
+import { identityTransform, repairTransform, type SampleTransform } from '@slopfactory/core/dsp';
+import { defaultZone, repairZone, type SampleZone } from '@slopfactory/core/sampler';
 import { DRUM_COUNT, VOICE_COUNT } from './anvilTimeline';
 
 export type VoiceSource = 'synth' | 'sample';

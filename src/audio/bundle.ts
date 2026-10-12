@@ -2,8 +2,8 @@
  * ANVIL portable project bundles (.anvilpack): the project file plus every sample it uses,
  * via Slop Factory Core's bundle format. Plain .anvil.json downloads never contain audio.
  */
-import { readBundle, writeBundle } from '../core/storage/bundle';
-import type { SampleStore, StoredSample } from '../core/storage/samples';
+import { readBundle, writeBundle } from '@slopfactory/core/storage';
+import type { SampleStore, StoredSample } from '@slopfactory/core/storage';
 import type { Project } from '../engine/types';
 import { projectFileName, serializeProject } from '../persistence/format';
 import { referencedSamples } from './settings';

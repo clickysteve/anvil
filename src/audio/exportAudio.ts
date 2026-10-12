@@ -9,11 +9,11 @@
 import { audibleVoices } from '../engine/render';
 import { freezePerformance, type FrozenPerformance } from '../engine/perform';
 import type { ItemId, Project } from '../engine/types';
-import type { Timeline } from '../core/events/timeline';
-import { fileName, slug, uniqueNames } from '../core/export/names';
-import { encodeWav16, levelStats, type LevelStats } from '../core/export/wav';
-import { createZip } from '../core/export/zip';
-import { EXPORT_SAMPLE_RATE, renderTimeline, type RenderResult, type StemRequest } from '../core/render/offline';
+import type { Timeline } from '@slopfactory/core/events';
+import { fileName, slug, uniqueNames } from '@slopfactory/core/export';
+import { encodeWav16, levelStats, type LevelStats } from '@slopfactory/core/export';
+import { createZip } from '@slopfactory/core/export';
+import { EXPORT_SAMPLE_RATE, renderTimeline, type RenderResult, type StemRequest } from '@slopfactory/core/render';
 import { performanceTimeline, voiceId, VOICE_COUNT } from './anvilTimeline';
 import type { SampleLibrary } from './library';
 import { anvilStrips, FX_SEED, makeResolver } from './routing';

@@ -6,10 +6,10 @@
 import type { Session } from '../app/session';
 import { VOICE_COUNT, voiceName } from '../audio/anvilTimeline';
 import { isDrumSlot, SLOT_COUNT, slotLabel } from '../audio/settings';
-import { fxLabel } from '../core/dsp/output/settings';
-import { MACRO_INFO, stretchCharacters } from '../core/dsp/transform/settings';
-import { snapToZeroCrossing, waveformPeaks } from '../core/sampler/edit';
-import { noteName, parseNoteName, type PlayMode } from '../core/sampler/zone';
+import { fxLabel } from '@slopfactory/core/dsp';
+import { MACRO_INFO, stretchCharacters } from '@slopfactory/core/dsp';
+import { snapToZeroCrossing, waveformPeaks } from '@slopfactory/core/sampler';
+import { noteName, parseNoteName, type PlayMode } from '@slopfactory/core/sampler';
 import { HARMONY_DRUM_BASE } from '../engine/types';
 import { bind, h, refreshAll, svg } from './dom';
 import { button, numField, selectField, toggle } from './widgets';

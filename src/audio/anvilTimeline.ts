@@ -9,7 +9,7 @@
  */
 import { HARMONY_DRUM_BASE, type Project } from '../engine/types';
 import type { FrozenPerformance } from '../engine/perform';
-import { constantTempo, NotePairer, sortEvents, type Timeline, type VoiceInfo } from '../core/events/timeline';
+import { constantTempo, NotePairer, sortEvents, type Timeline, type VoiceInfo } from '@slopfactory/core/events';
 
 export const ANVIL_PPQ = 24;
 export const VOICE_COUNT = 6;

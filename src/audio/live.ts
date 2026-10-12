@@ -6,9 +6,9 @@
  * The context is created at 44.1 kHz where the browser allows (the export rate), so live
  * processing runs at the same rate as exported audio.
  */
-import { NotePlayer } from '../core/audio/player';
-import { Mixer } from '../core/audio/mixer';
-import { loadOutputFx } from '../core/dsp/output/node';
+import { NotePlayer } from '@slopfactory/core/audio';
+import { Mixer } from '@slopfactory/core/audio';
+import { loadOutputFx } from '@slopfactory/core/dsp';
 import type { SeqEvent } from '../engine/sequencer';
 import type { AudioSink } from '../transport/transport';
 import { voiceId, VOICE_COUNT } from './anvilTimeline';

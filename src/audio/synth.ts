@@ -8,7 +8,7 @@
  * voice strip applies the 0.4 (MIX_HEADROOM) and the monitor applies the volume, which is the
  * same product.
  */
-import type { Instrument, NoteHandle, NoteRequest } from '../core/audio/instrument';
+import type { Instrument, NoteHandle, NoteRequest } from '@slopfactory/core/audio';
 
 const WAVES: OscillatorType[] = ['triangle', 'square', 'sawtooth', 'triangle', 'sine', 'square', 'sawtooth', 'triangle'];
 

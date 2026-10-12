@@ -5,7 +5,7 @@
  */
 import type { Session } from '../app/session';
 import { VOICE_COUNT } from '../audio/anvilTimeline';
-import { DRIVE_SHAPES, FX_PRESETS, fxLabel, matchPreset, OUTPUT_STAGE_MODES, type OutputFxSettings } from '../core/dsp/output/settings';
+import { DRIVE_SHAPES, FX_PRESETS, fxLabel, matchPreset, OUTPUT_STAGE_MODES, type OutputFxSettings } from '@slopfactory/core/dsp';
 import { bind, h, refreshAll } from './dom';
 import { button, numField, selectField, toggle } from './widgets';
 

@@ -98,6 +98,10 @@ emulation of a particular machine. CLEAN and BYPASS are exact copies. Settings c
 crossfade over 256 samples. Without AudioWorklet (an insecure context), audio plays unprocessed
 and the AUDIO tab says so.
 
+**Core 0.2.0 fix.** A GATED or LOOP note's release now fades from its level at the note-off.
+Before, a release scheduled ahead (always in exports, usually live) made Chromium ramp from the
+note's start, so held samples faded out over their whole length.
+
 ## 6. Sample processing
 
 Each slot can carry a **sample transformation** (Sample Bank, SAMPLE TRANSFORM): Good Bits
@@ -152,7 +156,8 @@ browser; record their audio separately.
 ## 10. Not implemented / known limitations
 
 * No pattern range (ANVIL has no patterns); exports start from START or PLAY ARRANGER.
-* No choke groups, no multi-sample instruments, no keyboard zones: one sample per slot.
+* No multi-sample instruments, no keyboard zones: one sample per slot. ANVIL assigns no choke
+  groups (Slop Factory Core supports them since 0.2.0; ANVIL's voices have no use for them yet).
 * Stem export files are stereo even for mono content.
 * Chromium can move individual exported samples by one 16-bit step between renders of the
   same project (floating-point summation order); every note, level and position is identical.
