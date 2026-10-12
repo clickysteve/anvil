@@ -7,13 +7,13 @@ own tests, documentation and version tags. DOWNBEAT uses the same package.
 
 ## How ANVIL depends on it
 
-`package.json` names an immutable version tag of the Core repository:
+`package.json` names an immutable commit of the Core repository (the 0.2.0 release commit; a version tag can be used the same way):
 
 ```json
-"@slopfactory/core": "git+https://github.com/clickysteve/slopfactory-core.git#v0.2.0"
+"@slopfactory/core": "github:clickysteve/slopfactory-core#fb403db63d21caa96d3ca816c799671c0be11707"
 ```
 
-and `package-lock.json` pins that tag's commit. `npm ci` installs it with no build step (the
+and `package-lock.json` pins that commit. `npm ci` installs it with no build step (the
 tag contains the built package), and Vite bundles it into ANVIL's static build; nothing is
 fetched at run time. To upgrade: install the new tag, run `npm run verify`, commit both files
 (see Core's `docs/RELEASING.md`).

@@ -13,16 +13,18 @@ const lock = JSON.parse(readFileSync(join(ROOT, 'package-lock.json'), 'utf8')) a
 const walk = (d: string): string[] => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]));
 
 describe('Slop Factory Core dependency', () => {
-  it('is an immutable version tag of the Core repository, pinned to a commit in the lockfile', () => {
+  it('is an immutable commit (or version tag) of the Core repository, the same commit in the lockfile', () => {
     const spec = pkg.dependencies['@slopfactory/core'];
-    expect(spec).toMatch(/^git\+https:\/\/github\.com\/clickysteve\/slopfactory-core\.git#v\d+\.\d+\.\d+$/);
+    expect(spec).toMatch(/^(github:clickysteve\/slopfactory-core|git\+https:\/\/github\.com\/clickysteve\/slopfactory-core\.git)#([0-9a-f]{40}|v\d+\.\d+\.\d+)$/);
     const entry = lock.packages['node_modules/@slopfactory/core'];
     expect(entry?.resolved).toMatch(/github\.com\/clickysteve\/slopfactory-core\.git#[0-9a-f]{40}$/);
-    expect(`v${entry?.version}`).toBe(spec.split('#')[1]);
+    const ref = spec.split('#')[1]!;
+    if (/^[0-9a-f]{40}$/.test(ref)) expect(entry!.resolved!.endsWith(ref)).toBe(true);
+    else expect(`v${entry?.version}`).toBe(ref);
   });
 
   it('is the installed version', () => {
-    expect(`v${CORE_VERSION}`).toBe(pkg.dependencies['@slopfactory/core'].split('#')[1]);
+    expect(CORE_VERSION).toBe(lock.packages['node_modules/@slopfactory/core']?.version);
   });
 
   it('has no local copy in ANVIL, and ANVIL imports it only by package name', () => {
