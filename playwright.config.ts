@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: 'e2e',
   timeout: 60_000,
   retries: 0,
+  // the live-audio verification records in real time: on CI, one test at a time
+  workers: process.env.CI ? 1 : undefined,
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:4321',
