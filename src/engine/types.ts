@@ -168,6 +168,10 @@ export interface ExtendedState {
   preserveContour: boolean;
 }
 
+/** Audio settings (format 2): sample slots, voice sources, output processors. See audio/settings.ts. */
+export type { ProjectAudio } from '../audio/settings';
+import type { ProjectAudio } from '../audio/settings';
+
 export interface Project {
   format: 'anvil-project';
   version: number;
@@ -196,6 +200,8 @@ export interface Project {
   options: Options;
   arranger: Arranger;
   extended: ExtendedState;
+  /** internal audio: sample slots, voice sources, output processing (format 2) */
+  audio: ProjectAudio;
   notes: string;
 }
 

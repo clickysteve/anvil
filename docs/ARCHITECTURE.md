@@ -14,6 +14,7 @@ src/engine/       pure, deterministic music model (no DOM, no timers, no Math.ra
   tonality.ts     38 generated scales, user scales, degree -> MIDI
   render.ts       one pass of the playing item through six voices -> timed notes
   sequencer.ts    clock-by-clock playback: passes, aligned changes, arranger, note pairing
+  perform.ts      frozen performance: what START plays, as timed events (MIDI and audio export)
   edit.ts         hand editing
 src/extended/     Extended-mode operations (selective regeneration, locks, contour, mutate)
 src/transport/
@@ -24,10 +25,12 @@ src/midi/
   webmidi.ts      Web MIDI access wrapper
   monitor.ts      bounded MIDI log with clock aggregation
   smf.ts          Standard MIDI File export (and a minimal reader for tests)
-src/audio/        audio preview synth fed by the same output stream
+src/audio/        ANVIL's internal audio on Slop Factory Core (the @slopfactory/core
+                  package): settings, synth instrument, live audio, sample library,
+                  routing, export, bundles
 src/persistence/  project format, validation/repair/migration, browser storage
 src/app/          Session (all user actions), preferences, demos
-src/ui/           DOM interface, palettes, theme drawing, help
+src/ui/           DOM interface, palettes, theme drawing, help, Sample Bank / Export windows
 ```
 
 The interface is a thin view: every control calls a `Session` method; after every change
@@ -128,9 +131,18 @@ position).
 - A port that disappears keeps its note list; if it comes back, those notes are ended.
 - PANIC adds All Notes Off, All Sound Off and Sustain Off on all 16 channels.
 
+## Internal audio
+
+The transport feeds every sequencer event (with its voice) to the internal audio beside the
+MIDI router; MIDI output does not depend on it. Live audio, samples, output processing and
+audio export are described in [SAMPLE-AUDIO-ARCHITECTURE.md](SAMPLE-AUDIO-ARCHITECTURE.md);
+the shared toolkit underneath in [SLOP-FACTORY-CORE.md](SLOP-FACTORY-CORE.md).
+
 ## Persistence
 
-Project files are JSON with `format: "anvil-project"` and an integer `version`. Loading
+Project files are JSON with `format: "anvil-project"` and an integer `version` (currently 2;
+version 2 added the `audio` settings, and version 1 files are migrated). Sample audio is never
+in project files: it lives in IndexedDB, and portable `.anvilpack` bundles carry it. Loading
 migrates older versions step by step (`MIGRATIONS`), refuses newer ones, then validates and
 repairs every field, reporting repairs as warnings. The project stores its mode, seed,
 generation counter and algorithm-version table. Autosave writes the open project to
@@ -143,4 +155,9 @@ ports, clock settings, palette) are stored separately and never in projects.
   and both clocks (with a manual fake clock), persistence, export, demos, Extended tools and
   the session.
 - `npm run test:e2e`: Playwright browser tests against production builds served at `/anvil/`
-  and `/`, with a simulated Web MIDI implementation injected before load.
+  and `/`, with a simulated Web MIDI implementation injected before load. They include the
+  Sample Bank, processing, export and bundle tests (`e2e/audio.spec.ts`) and the measured audio
+  verification (`e2e/audio-verify.spec.ts`, see [AUDIO-VERIFICATION.md](AUDIO-VERIFICATION.md)).
+- Slop Factory Core's own tests (Good Bits parity, sampler, mixer, choke groups, WAV/ZIP,
+  storage, browser rendering) live in the Core repository. `test/core-package.test.ts` checks
+  that ANVIL uses the shared package (a pinned tag, no local copy of Core).

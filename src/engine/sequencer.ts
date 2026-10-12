@@ -25,7 +25,10 @@ export interface SeqEvent {
   ch: number;
   note: number;
   vel: number;
+  /** voice index 0..5, or -1 for note-offs that end everything (silence) */
   voice: number;
+  /** drum-table index 0..6 for drum-harmony notes, -1 otherwise (informational; MIDI ignores it) */
+  drum: number;
 }
 
 export interface TickResult {
@@ -41,6 +44,7 @@ interface Pending {
   note: number;
   vel: number;
   voice: number;
+  drum: number;
   pass: number;
   dur: number;
   /** identifies the note instance (for pairing offs with ons) */
@@ -123,7 +127,7 @@ export class Sequencer {
     const out: SeqEvent[] = [];
     for (const key of this.sounding.keys()) {
       const [ch, note] = key.split(':').map(Number);
-      out.push({ kind: 'off', ch, note, vel: 0, voice: -1 });
+      out.push({ kind: 'off', ch, note, vel: 0, voice: -1, drum: -1 });
     }
     this.sounding.clear();
     // keep pending note-ons of the current pass that are still in the future; they will be
@@ -236,7 +240,7 @@ export class Sequencer {
         const key = `${e.ch}:${e.note}`;
         if (this.sounding.get(key) === e.id) {
           this.sounding.delete(key);
-          events.push({ kind: 'off', ch: e.ch, note: e.note, vel: 0, voice: e.voice });
+          events.push({ kind: 'off', ch: e.ch, note: e.note, vel: 0, voice: e.voice, drum: e.drum });
         }
       } else keep.push(e);
     }
@@ -250,9 +254,9 @@ export class Sequencer {
     this.pending = this.pending.filter((e) => !(e.kind === 'on' && e.tick <= T));
     for (const e of due) {
       const key = `${e.ch}:${e.note}`;
-      if (this.sounding.has(key)) events.push({ kind: 'off', ch: e.ch, note: e.note, vel: 0, voice: e.voice });
+      if (this.sounding.has(key)) events.push({ kind: 'off', ch: e.ch, note: e.note, vel: 0, voice: e.voice, drum: e.drum });
       this.sounding.set(key, e.id);
-      events.push({ kind: 'on', ch: e.ch, note: e.note, vel: e.vel, voice: e.voice });
+      events.push({ kind: 'on', ch: e.ch, note: e.note, vel: e.vel, voice: e.voice, drum: e.drum });
       this.pending.push({ ...e, kind: 'off', tick: T + e.dur });
     }
   }
@@ -298,7 +302,7 @@ export class Sequencer {
   }
 
   private addOn(n: NoteOut, base: number, pass: number): void {
-    this.pending.push({ tick: base + n.tick, kind: 'on', ch: n.ch, note: n.note, vel: n.vel, voice: n.voice, pass, dur: n.dur, id: this.nextId++ });
+    this.pending.push({ tick: base + n.tick, kind: 'on', ch: n.ch, note: n.note, vel: n.vel, voice: n.voice, drum: n.drum, pass, dur: n.dur, id: this.nextId++ });
   }
 
   // ------------------------------------------------------------------ arranger

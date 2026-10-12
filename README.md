@@ -2,7 +2,8 @@
 
 **ANVIL** is an algorithmic MIDI composition instrument for the browser. You set rules; ANVIL
 composes short themes from them, makes variations, and plays them through up to six voices of
-accompaniment derived from the theme, on your MIDI hardware or its own preview sound.
+accompaniment derived from the theme, on your MIDI hardware, its own small synthesiser, or
+samples you load. It can render what it plays to WAV files and sample-aligned stems.
 
 The name follows a line of descent: Tunesmith → smith → anvil.
 
@@ -51,11 +52,49 @@ Projects remember their mode. Switching never changes the music.
 
 Full behaviour, with evidence for each rule: [docs/BEHAVIOUR.md](docs/BEHAVIOUR.md).
 
+## Internal audio, samples and export
+
+ANVIL always sends MIDI. It can also play its own **internal audio** in the browser (AUDIO tab,
+INTERNAL AUDIO): a small synthesiser, or samples.
+
+- **Sample Bank** (SAMPLES, top right): thirteen slots, V1-V6 for the six voices and D1-D7 for
+  the seven drum-table entries, so a drum voice can play a different sample per drum-table
+  entry. Load or drop WAV, AIFF, MP3, OGG, FLAC, M4A... Each slot has a root note (chromatic
+  playback-rate transposition, like a hardware sampler), tune, fine, volume, pan, velocity
+  sensitivity, ONE SHOT / GATED / LOOP, start/end and loop points, release, mute and audition.
+  A voice set to SAMPLE plays the internal synth wherever its slot is empty.
+- **Sample transformations** rework a sample once with The Good Bits' STRETCH FX chain (its
+  stretch characters, varispeed pitch, reverse, drive, crunch), keeping the original.
+- **Output engine** (AUDIO tab): The Good Bits' output processing per voice and on the master:
+  output-stage characters, drive, crunch (bit depth and sample-rate reduction), gain and tone,
+  with presets such as 12-BIT and a bypass. CLEAN leaves the sound exactly as it was.
+- **Export audio** (EXPORT, top right): an item (a theme or variation, N passes) or the
+  arrangement, exactly as START or PLAY ARRANGER plays it, to a master WAV, one stem per voice,
+  or both (one ZIP). 44.1 kHz, 16-bit, stereo; every file starts at the same sample with the
+  same length; no trimming or normalising. Stems carry their voice's processing; master
+  processing is applied to the master only (summing the stems gives the mix before master
+  processing).
+- Samples stay in this browser (IndexedDB) and survive reloads. **DOWNLOAD BUNDLE** writes a
+  portable `.anvilpack` with the project and its samples.
+
+External MIDI instruments cannot be rendered by the browser: record them separately. Details:
+[docs/USER-GUIDE.md](docs/USER-GUIDE.md) and
+[docs/SAMPLE-AUDIO-ARCHITECTURE.md](docs/SAMPLE-AUDIO-ARCHITECTURE.md).
+
+## Slop Factory Core
+
+ANVIL's audio, sampling, processing, rendering, export and storage come from **Slop Factory
+Core** (`@slopfactory/core`, <https://github.com/clickysteve/slopfactory-core>), the shared audio
+package of the instruments in the collection; DOWNBEAT uses the same version. It was first built
+here and now lives in its own repository; ANVIL installs a version tag of it and bundles it into
+its static build. Core reuses The Good Bits' DSP verbatim and knows nothing about ANVIL. See
+[docs/SLOP-FACTORY-CORE.md](docs/SLOP-FACTORY-CORE.md).
+
 ## MIDI setup
 
 Use Chrome, Edge, Opera or Firefox (Web MIDI; ANVIL never asks for SysEx). In the **MIDI**
 tab choose an **Output**; set each voice's channel in the accompaniment table. Without MIDI,
-switch on **Audio preview**. The MIDI monitor shows traffic in and out; MIDI clock is
+switch on **Audio preview** (the same switch as INTERNAL AUDIO in the AUDIO tab). The MIDI monitor shows traffic in and out; MIDI clock is
 summarised as a rate rather than listed.
 
 ### Internal clock (ANVIL as master)
@@ -94,8 +133,13 @@ setup has **not** been verified on hardware by the developers.
 
 Work autosaves in the browser. **Save in browser** keeps named copies; **Download** writes a
 `.anvil.json` file; **Open file** reads one back (older formats are upgraded, damaged values
-repaired with a report). **Export item / arranger** writes a Standard MIDI File of exactly what
-ANVIL plays. Palettes and MIDI port choices are browser preferences, not project data.
+repaired with a report). Project files refer to samples but never contain audio; **Download
+bundle** writes an `.anvilpack` with the samples, which Open file also reads. **Export item /
+arranger** writes a Standard MIDI File of exactly what ANVIL plays. Palettes and MIDI port
+choices are browser preferences, not project data.
+
+Project format 2 adds the audio settings. Format 1 projects open unchanged (every voice on
+the internal synth, no processing); older versions of ANVIL refuse format 2 files.
 
 ## Palettes
 
@@ -112,6 +156,9 @@ Not implemented (none of these block normal use):
 - MIDI control input (changing tonality or items from a keyboard);
 - Song Position Pointer (sent or received), clock thru;
 - MIDI file import.
+- audio export starts from START or PLAY ARRANGER: changes made by hand during a performance
+  are not rendered; there are no choke groups or multi-sample instruments; Chromium may move
+  individual exported samples by one 16-bit step between two renders of the same project.
 
 MIDI timing in the browser: ANVIL schedules up to 100 ms ahead and never withdraws a message
 once scheduled (browsers differ in whether they can), so PAUSE and STOP take effect at most
@@ -128,11 +175,21 @@ clock follower over USB, still needs to be checked on the devices themselves.
 - [docs/PROVENANCE.md](docs/PROVENANCE.md): clean-room statement and repository audit.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): engine, timing and clock model.
 - [docs/EXTENDED.md](docs/EXTENDED.md): Extended features and future extension points.
+- [docs/USER-GUIDE.md](docs/USER-GUIDE.md): samples, processing, export and bundles, step by step.
+- [docs/SAMPLE-AUDIO-ARCHITECTURE.md](docs/SAMPLE-AUDIO-ARCHITECTURE.md): ANVIL's audio system.
+- [docs/SLOP-FACTORY-CORE.md](docs/SLOP-FACTORY-CORE.md): the shared audio package ANVIL depends on, and how to upgrade it.
+- [docs/GOOD-BITS-DSP-INVENTORY.md](docs/GOOD-BITS-DSP-INVENTORY.md): where the Good Bits DSP inventory moved (Core).
+- [docs/AUDIO-VERIFICATION.md](docs/AUDIO-VERIFICATION.md): measured audio output.
+- [docs/MIDI-FOUNDATION.md](docs/MIDI-FOUNDATION.md): where the MIDI audit and roadmap moved (Core).
+- [docs/DOWNBEAT-INTEGRATION-PLAN.md](docs/DOWNBEAT-INTEGRATION-PLAN.md): how DOWNBEAT adopted Core (the plan and what was done).
+- [docs/ROADMAP.md](docs/ROADMAP.md): what is planned.
 
 ## Licence
 
 ANVIL's own code and documentation are MIT licensed ([LICENSE](LICENSE)). The licence covers
 nothing else; see [NOTICE.md](NOTICE.md) for its scope and the non-affiliation statement.
+DSP code from The Good Bits (same author, MIT) reaches ANVIL through Slop Factory Core (MIT),
+which vendors it unchanged with its own licence file.
 
 ## Development
 
@@ -151,7 +208,9 @@ npm run verify       # all of the above
 
 Browser tests serve two production builds (one under `/anvil/`, one at `/`) and inject a
 simulated Web MIDI device. If Playwright's bundled Chromium is not installed, point
-`CHROMIUM_PATH` at a Chromium binary.
+`CHROMIUM_PATH` at a Chromium binary. `e2e/audio.spec.ts` covers the Sample Bank, processing,
+export and bundles; `e2e/audio-verify.spec.ts` measures real rendered audio (set
+`VERIFY_OUT=file.json` to keep the measurements, `SHOT_DIR=dir` for screenshots).
 
 ## Deployment
 
